@@ -90,14 +90,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
-      { title: "Movra" },
+      { title: "FitTrack" },
       { name: "description", content: "Simple fitness & food tracker. One screen at a time." },
       { name: "theme-color", content: "#0a0a0a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Movra" },
+      { name: "apple-mobile-web-app-title", content: "FitTrack" },
       { name: "mobile-web-app-capable", content: "yes" },
-      { property: "og:title", content: "Movra" },
+      { property: "og:title", content: "FitTrack" },
       { property: "og:description", content: "Simple fitness & food tracker. One screen at a time." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -110,12 +110,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const themeScript = `(function(){try{var s=localStorage.getItem('fitness-tracker-storage');var t='system';if(s){var p=JSON.parse(s);t=(p&&p.state&&p.state.theme)||'system';}var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="dark">
+      <body>
         {children}
         <Scripts />
       </body>
@@ -134,7 +136,7 @@ function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-md justify-around py-2">
+      <div className="mx-auto flex max-w-sm justify-around py-1.5">
         {navItems.map((item) => (
           <Link
             key={item.to}
@@ -142,10 +144,10 @@ function BottomNav() {
             activeProps={{ className: "text-primary" }}
             inactiveProps={{ className: "text-muted-foreground" }}
             activeOptions={{ exact: item.to === "/" }}
-            className="flex flex-col items-center gap-1 px-3 py-1 transition-colors"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors"
           >
-            <item.icon className="h-5 w-5" />
-            <span className="text-[11px] font-medium">{item.label}</span>
+            <item.icon className="h-[18px] w-[18px]" />
+            <span className="text-[10px] font-medium">{item.label}</span>
           </Link>
         ))}
       </div>
@@ -157,11 +159,30 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const hydrated = useHydrated();
   const onboarded = useFitnessStore((s) => s.onboarded);
+  const theme = useFitnessStore((s) => s.theme);
   const showNav = hydrated && onboarded;
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const apply = () => {
+      const prefersDark =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const useDark = theme === "dark" || (theme === "system" && prefersDark);
+      root.classList.toggle("dark", useDark);
+    };
+    apply();
+    if (theme === "system" && typeof window !== "undefined") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    }
+  }, [theme]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`mx-auto min-h-screen max-w-md bg-background ${showNav ? "pb-20" : ""}`}>
+      <div className={`mx-auto min-h-screen max-w-sm bg-background ${showNav ? "pb-16" : ""}`}>
         <Outlet />
       </div>
       {showNav && <BottomNav />}

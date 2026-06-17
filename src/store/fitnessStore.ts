@@ -25,6 +25,20 @@ export interface FoodEntry {
   mealType: "breakfast" | "lunch" | "dinner" | "snack";
 }
 
+export interface MealItem {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface Meal {
+  id: string;
+  name: string;
+  items: MealItem[];
+}
+
 export interface DayLog {
   exercisesCompleted: string[];
   food: FoodEntry[];
@@ -48,6 +62,8 @@ export type Sex = "male" | "female";
 export type GoalType = "lose" | "maintain" | "gain";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "athlete";
 export type WeightUnit = "kg" | "lb";
+export type LiftingGoal = "strength" | "hypertrophy" | "endurance" | "general";
+export type ThemePreference = "light" | "dark" | "system";
 
 export interface Profile {
   sex: Sex;
@@ -57,6 +73,7 @@ export interface Profile {
   goalType: GoalType;
   activity: ActivityLevel;
   daysPerWeek: number;
+  liftingGoal: LiftingGoal;
 }
 
 export interface FitnessState {
@@ -70,6 +87,9 @@ export interface FitnessState {
   profile: Profile | null;
   onboarded: boolean;
   weightUnit: WeightUnit;
+  theme: ThemePreference;
+  meals: Record<string, Meal>;
+  mealOrder: string[];
 
   createTemplate: (name: string) => string;
   renameTemplate: (templateId: string, name: string) => void;
@@ -81,6 +101,11 @@ export interface FitnessState {
     patch: Partial<Omit<Exercise, "id">>
   ) => void;
   removeExerciseFromTemplate: (templateId: string, exerciseId: string) => void;
+  replaceExerciseInTemplate: (
+    templateId: string,
+    exerciseId: string,
+    exercise: Omit<Exercise, "id">
+  ) => void;
   assignTemplateToDay: (day: string, templateId: string | null) => void;
   getTodayTemplate: () => WorkoutTemplate | null;
   getTemplateForDay: (day: string) => WorkoutTemplate | null;
@@ -103,6 +128,15 @@ export interface FitnessState {
   completeOnboarding: (profile: Profile) => void;
   resetOnboarding: () => void;
   setWeightUnit: (unit: WeightUnit) => void;
+  setTheme: (theme: ThemePreference) => void;
+  createMeal: (name: string, items: MealItem[]) => string;
+  updateMeal: (mealId: string, patch: Partial<Omit<Meal, "id">>) => void;
+  deleteMeal: (mealId: string) => void;
+  logMeal: (
+    date: string,
+    mealId: string,
+    mealType: FoodEntry["mealType"]
+  ) => void;
 }
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -196,22 +230,146 @@ export function computeGoalsFromProfile(p: Profile): Goals {
   return { calories, protein, carbs, fat };
 }
 
+// Split keys, mon..sun, per training frequency.
 const SPLITS: Record<number, (string | null)[]> = {
-  // mon..sun
-  1: ["cardio", null, null, null, null, null, null],
-  2: ["push", null, null, "pull", null, null, null],
+  1: ["full", null, null, null, null, null, null],
+  2: ["upper", null, null, "lower", null, null, null],
   3: ["push", null, "pull", null, "legs", null, null],
-  4: ["push", "pull", null, "legs", "cardio", null, null],
-  5: ["push", "pull", "legs", null, "push", "pull", null],
+  4: ["upper", "lower", null, "upper", "lower", null, null],
+  5: ["push", "pull", "legs", null, "upper", "lower", null],
   6: ["push", "pull", "legs", "push", "pull", "legs", null],
   7: ["push", "pull", "legs", "push", "pull", "legs", "cardio"],
 };
 
-export function buildWeekPlanFromDays(days: number): Record<string, string | null> {
-  const arr = SPLITS[Math.max(1, Math.min(7, days))] || SPLITS[3];
-  const plan: Record<string, string | null> = {};
-  DAYS.forEach((d, i) => (plan[d] = arr[i]));
-  return plan;
+// Goal-tuned set/rep scheme.
+const SCHEMES: Record<LiftingGoal, { sets: number; reps: string; bigSets: number; bigReps: string }> = {
+  strength:    { sets: 5, reps: "5",     bigSets: 5, bigReps: "5" },
+  hypertrophy: { sets: 4, reps: "8-12",  bigSets: 4, bigReps: "6-8" },
+  endurance:   { sets: 3, reps: "15-20", bigSets: 3, bigReps: "12-15" },
+  general:     { sets: 3, reps: "10",    bigSets: 3, bigReps: "8-10" },
+};
+
+// Base exercise lists per template kind. `big` = primary compound.
+type BaseEx = { name: string; big?: boolean };
+const BASE: Record<string, { name: string; exercises: BaseEx[] }> = {
+  push: {
+    name: "Push",
+    exercises: [
+      { name: "Bench Press", big: true },
+      { name: "Overhead Press", big: true },
+      { name: "Incline Dumbbell Press" },
+      { name: "Lateral Raise" },
+      { name: "Tricep Pushdown" },
+    ],
+  },
+  pull: {
+    name: "Pull",
+    exercises: [
+      { name: "Deadlift", big: true },
+      { name: "Pull-ups", big: true },
+      { name: "Barbell Row" },
+      { name: "Face Pull" },
+      { name: "Bicep Curl" },
+    ],
+  },
+  legs: {
+    name: "Legs",
+    exercises: [
+      { name: "Squat", big: true },
+      { name: "Romanian Deadlift", big: true },
+      { name: "Leg Press" },
+      { name: "Leg Curl" },
+      { name: "Calf Raise" },
+    ],
+  },
+  upper: {
+    name: "Upper",
+    exercises: [
+      { name: "Bench Press", big: true },
+      { name: "Barbell Row", big: true },
+      { name: "Overhead Press" },
+      { name: "Pull-ups" },
+      { name: "Bicep Curl" },
+      { name: "Tricep Pushdown" },
+    ],
+  },
+  lower: {
+    name: "Lower",
+    exercises: [
+      { name: "Squat", big: true },
+      { name: "Romanian Deadlift", big: true },
+      { name: "Leg Press" },
+      { name: "Leg Curl" },
+      { name: "Calf Raise" },
+    ],
+  },
+  full: {
+    name: "Full Body",
+    exercises: [
+      { name: "Squat", big: true },
+      { name: "Bench Press", big: true },
+      { name: "Barbell Row", big: true },
+      { name: "Overhead Press" },
+      { name: "Bicep Curl" },
+    ],
+  },
+  cardio: {
+    name: "Cardio",
+    exercises: [
+      { name: "Run / Bike" },
+      { name: "Plank" },
+    ],
+  },
+};
+
+export function buildPlanFromProfile(
+  daysPerWeek: number,
+  liftingGoal: LiftingGoal
+): {
+  templates: Record<string, WorkoutTemplate>;
+  templateOrder: string[];
+  weekPlan: Record<string, string | null>;
+} {
+  const days = Math.max(1, Math.min(7, daysPerWeek));
+  const split = SPLITS[days] || SPLITS[3];
+  const scheme = SCHEMES[liftingGoal];
+  const isCardio = (kind: string) => kind === "cardio";
+
+  const used = new Set<string>();
+  split.forEach((k) => k && used.add(k));
+
+  const templates: Record<string, WorkoutTemplate> = {};
+  const templateOrder: string[] = [];
+  for (const kind of used) {
+    const base = BASE[kind];
+    if (!base) continue;
+    const id = kind; // stable ids so day plan can reference
+    templates[id] = {
+      id,
+      name: base.name,
+      exercises: base.exercises.map((e, i) => ({
+        id: `${id}-${i}`,
+        name: e.name,
+        sets: isCardio(kind) ? (e.name === "Plank" ? 3 : 1) : e.big ? scheme.bigSets : scheme.sets,
+        reps: isCardio(kind)
+          ? e.name === "Plank"
+            ? "60s"
+            : "30 min"
+          : e.big
+            ? scheme.bigReps
+            : scheme.reps,
+      })),
+    };
+    templateOrder.push(id);
+  }
+
+  const weekPlan: Record<string, string | null> = {};
+  DAYS.forEach((d, i) => {
+    const k = split[i];
+    weekPlan[d] = k && templates[k] ? k : null;
+  });
+
+  return { templates, templateOrder, weekPlan };
 }
 
 export function getTodayISO(): string {
@@ -243,6 +401,22 @@ function computeStreak(logs: Record<string, DayLog>): number {
   return streak;
 }
 
+function findLastSetLogs(
+  logs: Record<string, DayLog>,
+  exerciseId: string,
+  beforeDate: string
+): SetLog[] | null {
+  const dates = Object.keys(logs)
+    .filter((d) => d < beforeDate && logs[d]?.setLogs?.[exerciseId])
+    .sort()
+    .reverse();
+  for (const d of dates) {
+    const arr = logs[d].setLogs?.[exerciseId];
+    if (arr && arr.length > 0) return arr;
+  }
+  return null;
+}
+
 export const useFitnessStore = create<FitnessState>()(
   persist(
     (set, get) => ({
@@ -256,6 +430,9 @@ export const useFitnessStore = create<FitnessState>()(
       profile: null,
       onboarded: false,
       weightUnit: "kg",
+      theme: "system",
+      meals: {},
+      mealOrder: [],
 
       createTemplate: (name) => {
         const id = uid("tpl");
@@ -318,6 +495,24 @@ export const useFitnessStore = create<FitnessState>()(
               [templateId]: {
                 ...tpl,
                 exercises: tpl.exercises.filter((e) => e.id !== exerciseId),
+              },
+            },
+          };
+        }),
+
+      replaceExerciseInTemplate: (templateId, exerciseId, exercise) =>
+        set((state) => {
+          const tpl = state.templates[templateId];
+          if (!tpl) return state;
+          const newId = uid("ex");
+          return {
+            templates: {
+              ...state.templates,
+              [templateId]: {
+                ...tpl,
+                exercises: tpl.exercises.map((e) =>
+                  e.id === exerciseId ? { ...exercise, id: newId } : e
+                ),
               },
             },
           };
@@ -388,12 +583,14 @@ export const useFitnessStore = create<FitnessState>()(
         const log = get().logs[date] || { exercisesCompleted: [], food: [] };
         const stored = log.setLogs?.[exercise.id];
         const defaultReps = parseInt(exercise.reps, 10) || 0;
+        const prev = stored ? null : findLastSetLogs(get().logs, exercise.id, date);
         return Array.from({ length: exercise.sets }, (_, i) => {
           const s = stored?.[i];
+          const p = prev?.[i];
           return {
             done: s?.done ?? false,
-            weight: s?.weight ?? exercise.weights?.[i] ?? 0,
-            reps: s?.reps ?? defaultReps,
+            weight: s?.weight ?? p?.weight ?? exercise.weights?.[i] ?? 0,
+            reps: s?.reps ?? p?.reps ?? defaultReps,
           };
         });
       },
@@ -403,12 +600,14 @@ export const useFitnessStore = create<FitnessState>()(
           const log = state.logs[date] || { exercisesCompleted: [], food: [] };
           const defaultReps = parseInt(exercise.reps, 10) || 0;
           const cur = log.setLogs?.[exercise.id];
+          const prev = cur ? null : findLastSetLogs(state.logs, exercise.id, date);
           const arr: SetLog[] = Array.from({ length: exercise.sets }, (_, i) => {
             const s = cur?.[i];
+            const p = prev?.[i];
             return {
               done: s?.done ?? false,
-              weight: s?.weight ?? exercise.weights?.[i] ?? 0,
-              reps: s?.reps ?? defaultReps,
+              weight: s?.weight ?? p?.weight ?? exercise.weights?.[i] ?? 0,
+              reps: s?.reps ?? p?.reps ?? defaultReps,
             };
           });
           arr[index] = { ...arr[index], ...patch };
@@ -506,17 +705,91 @@ export const useFitnessStore = create<FitnessState>()(
       completeOnboarding: (profile) =>
         set(() => {
           const goals = computeGoalsFromProfile(profile);
-          const weekPlan = buildWeekPlanFromDays(profile.daysPerWeek);
-          return { profile, goals, weekPlan, onboarded: true };
+          const { templates, templateOrder, weekPlan } = buildPlanFromProfile(
+            profile.daysPerWeek,
+            profile.liftingGoal
+          );
+          return {
+            profile,
+            goals,
+            templates,
+            templateOrder,
+            weekPlan,
+            logs: {},
+            onboarded: true,
+          };
         }),
 
       resetOnboarding: () => set(() => ({ onboarded: false })),
 
       setWeightUnit: (unit) => set(() => ({ weightUnit: unit })),
+
+      setTheme: (theme) => set(() => ({ theme })),
+
+      createMeal: (name, items) => {
+        const id = uid("meal");
+        set((state) => ({
+          meals: {
+            ...state.meals,
+            [id]: { id, name: name.trim() || "Untitled meal", items },
+          },
+          mealOrder: [...state.mealOrder, id],
+        }));
+        return id;
+      },
+
+      updateMeal: (mealId, patch) =>
+        set((state) => {
+          const m = state.meals[mealId];
+          if (!m) return state;
+          return {
+            meals: { ...state.meals, [mealId]: { ...m, ...patch } },
+          };
+        }),
+
+      deleteMeal: (mealId) =>
+        set((state) => {
+          const { [mealId]: _gone, ...rest } = state.meals;
+          return {
+            meals: rest,
+            mealOrder: state.mealOrder.filter((id) => id !== mealId),
+          };
+        }),
+
+      logMeal: (date, mealId, mealType) =>
+        set((state) => {
+          const meal = state.meals[mealId];
+          if (!meal) return state;
+          const log = state.logs[date] || { exercisesCompleted: [], food: [] };
+          const totals = meal.items.reduce(
+            (acc, it) => ({
+              calories: acc.calories + it.calories,
+              protein: acc.protein + it.protein,
+              carbs: acc.carbs + it.carbs,
+              fat: acc.fat + it.fat,
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 }
+          );
+          const newEntry: FoodEntry = {
+            id: uid("food"),
+            name: meal.name,
+            calories: Math.round(totals.calories),
+            protein: Math.round(totals.protein * 10) / 10,
+            carbs: Math.round(totals.carbs * 10) / 10,
+            fat: Math.round(totals.fat * 10) / 10,
+            mealType,
+          };
+          return {
+            logs: {
+              ...state.logs,
+              [date]: { ...log, food: [...log.food, newEntry] },
+            },
+          };
+        }),
     }),
     {
       name: "fitness-tracker-storage",
-      version: 4,
+      version: 6,
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 2) {
@@ -557,6 +830,19 @@ export const useFitnessStore = create<FitnessState>()(
           return {
             ...persisted,
             weightUnit: persisted.weightUnit ?? "kg",
+          };
+        }
+        if (version < 5) {
+          return {
+            ...persisted,
+            theme: persisted.theme ?? "system",
+          };
+        }
+        if (version < 6) {
+          return {
+            ...persisted,
+            meals: persisted.meals ?? {},
+            mealOrder: persisted.mealOrder ?? [],
           };
         }
         return persisted;

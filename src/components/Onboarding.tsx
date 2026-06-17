@@ -7,6 +7,7 @@ import {
   type Sex,
   type GoalType,
   type ActivityLevel,
+  type LiftingGoal,
 } from "@/store/fitnessStore";
 
 const GOAL_OPTIONS: { value: GoalType; label: string; desc: string }[] = [
@@ -23,6 +24,13 @@ const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] 
   { value: "athlete", label: "Athlete", desc: "2-a-days, physical job" },
 ];
 
+const LIFTING_OPTIONS: { value: LiftingGoal; label: string; desc: string }[] = [
+  { value: "strength", label: "Get stronger", desc: "Heavy 5×5 — max strength" },
+  { value: "hypertrophy", label: "Build muscle", desc: "4×8–12 — size & shape" },
+  { value: "endurance", label: "Muscular endurance", desc: "3×15–20 — lean & toned" },
+  { value: "general", label: "General fitness", desc: "3×10 — balanced mix" },
+];
+
 export function Onboarding() {
   const completeOnboarding = useFitnessStore((s) => s.completeOnboarding);
   const setWeightUnit = useFitnessStore((s) => s.setWeightUnit);
@@ -35,8 +43,9 @@ export function Onboarding() {
   const [goalType, setGoalType] = useState<GoalType>("maintain");
   const [activity, setActivity] = useState<ActivityLevel>("moderate");
   const [daysPerWeek, setDaysPerWeek] = useState(4);
+  const [liftingGoal, setLiftingGoal] = useState<LiftingGoal>("hypertrophy");
 
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   const profile: Profile = {
     sex,
@@ -46,11 +55,12 @@ export function Onboarding() {
     goalType,
     activity,
     daysPerWeek,
+    liftingGoal,
   };
 
   const previewGoals = computeGoalsFromProfile(profile);
 
-  const next = () => setStep((s) => Math.min(5, s + 1));
+  const next = () => setStep((s) => Math.min(totalSteps - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
   const finish = () => {
     setWeightUnit(unit === "imperial" ? "lb" : "kg");
@@ -83,7 +93,7 @@ export function Onboarding() {
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
               <Dumbbell className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome to Movra</h1>
+            <h1 className="text-3xl font-bold text-foreground">Welcome to FitTrack</h1>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">
               Let's set up your plan. Takes 60 seconds.
             </p>
@@ -131,6 +141,26 @@ export function Onboarding() {
         {step === 2 && (
           <div className="flex flex-col gap-4">
             <StepHeader
+              title="What are you lifting for?"
+              subtitle="We'll pick sets & reps that match."
+            />
+            <div className="flex flex-col gap-2">
+              {LIFTING_OPTIONS.map((opt) => (
+                <OptionCard
+                  key={opt.value}
+                  selected={liftingGoal === opt.value}
+                  onClick={() => setLiftingGoal(opt.value)}
+                  label={opt.label}
+                  desc={opt.desc}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="flex flex-col gap-4">
+            <StepHeader
               title="Days per week"
               subtitle="How often will you train?"
             />
@@ -151,12 +181,12 @@ export function Onboarding() {
               <span>7</span>
             </div>
             <p className="text-center text-xs text-muted-foreground">
-              We'll auto-assign a split (push/pull/legs + cardio) you can edit later.
+              We'll build a {daysPerWeek}-day split tuned to your lifting goal. Edit anytime.
             </p>
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="flex flex-col gap-4">
             <StepHeader title="About you" subtitle="Used to calculate your calorie goal." />
             <div className="grid grid-cols-2 gap-2">
@@ -229,7 +259,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="flex flex-col gap-4">
             <StepHeader title="Activity outside the gym" subtitle="Be honest — affects your calories." />
             <div className="flex flex-col gap-2">
@@ -246,7 +276,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <div className="flex flex-col gap-4">
             <StepHeader title="Your daily targets" subtitle="You can tweak these anytime." />
             <div className="rounded-xl bg-card p-6 text-center">
@@ -262,7 +292,10 @@ export function Onboarding() {
             </div>
             <div className="rounded-xl bg-card p-4 text-sm text-muted-foreground">
               We'll set up a <span className="font-semibold text-foreground">{daysPerWeek}-day</span>{" "}
-              split this week. Edit it anytime under{" "}
+              <span className="font-semibold text-foreground">
+                {LIFTING_OPTIONS.find((o) => o.value === liftingGoal)?.label.toLowerCase()}
+              </span>{" "}
+              plan this week. Edit it anytime under{" "}
               <span className="font-semibold text-foreground">Routine</span>.
             </div>
           </div>
@@ -270,10 +303,10 @@ export function Onboarding() {
 
         <div className="mt-auto pt-4">
           <button
-            onClick={step === 5 ? finish : next}
+            onClick={step === totalSteps - 1 ? finish : next}
             className="flex w-full items-center justify-center gap-1 rounded-xl bg-primary py-3.5 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
-            {step === 0 ? "Get started" : step === 5 ? "Start tracking" : "Continue"}
+            {step === 0 ? "Get started" : step === totalSteps - 1 ? "Start tracking" : "Continue"}
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>

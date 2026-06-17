@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { User, RotateCcw } from "lucide-react";
+import { User, RotateCcw, Sun, Moon, Monitor } from "lucide-react";
 import { useState } from "react";
-import { useFitnessStore, type WeightUnit, type Goals } from "@/store/fitnessStore";
+import { useFitnessStore, type WeightUnit, type Goals, type ThemePreference } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Profile — Movra" },
+      { title: "Profile — FitTrack" },
       { name: "description", content: "Manage your units and preferences." },
     ],
   }),
@@ -18,13 +18,15 @@ function ProfilePage() {
   const hydrated = useHydrated();
   const weightUnit = useFitnessStore((s) => s.weightUnit);
   const setWeightUnit = useFitnessStore((s) => s.setWeightUnit);
+  const theme = useFitnessStore((s) => s.theme);
+  const setTheme = useFitnessStore((s) => s.setTheme);
   const profile = useFitnessStore((s) => s.profile);
   const goals = useFitnessStore((s) => s.goals);
   const setGoals = useFitnessStore((s) => s.setGoals);
   const resetOnboarding = useFitnessStore((s) => s.resetOnboarding);
 
   if (!hydrated) {
-    return <div className="flex min-h-screen flex-col p-4" />;
+    return <div className="flex min-h-screen flex-col p-3" />;
   }
 
   const units: { value: WeightUnit; label: string }[] = [
@@ -32,20 +34,55 @@ function ProfilePage() {
     { value: "lb", label: "Pounds (lb)" },
   ];
 
+  const themes: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ];
+
   return (
-    <div className="flex min-h-screen flex-col gap-6 p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <User className="h-6 w-6 text-primary" />
+    <div className="flex min-h-screen flex-col gap-4 p-3">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <User className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-          <p className="text-sm text-muted-foreground">Settings & preferences</p>
+          <h1 className="text-xl font-bold text-foreground">Profile</h1>
+          <p className="text-xs text-muted-foreground">Settings & preferences</p>
         </div>
       </div>
 
       <section>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Appearance
+        </h2>
+        <div className="grid grid-cols-3 gap-2">
+          {themes.map((t) => {
+            const Icon = t.icon;
+            const active = theme === t.value;
+            return (
+              <button
+                key={t.value}
+                onClick={() => setTheme(t.value)}
+                className={`flex flex-col items-center gap-1 rounded-xl border p-2.5 transition-all ${
+                  active
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/40"
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="text-xs font-semibold text-foreground">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
+          System follows your device preference.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Weight unit
         </h2>
         <div className="grid grid-cols-2 gap-2">
@@ -53,27 +90,27 @@ function ProfilePage() {
             <button
               key={u.value}
               onClick={() => setWeightUnit(u.value)}
-              className={`rounded-xl border p-4 text-left transition-all ${
+              className={`rounded-xl border p-3 text-left transition-all ${
                 weightUnit === u.value
                   ? "border-primary bg-primary/10"
                   : "border-border bg-card hover:border-primary/40"
               }`}
             >
-              <p className="text-base font-semibold text-foreground">{u.label}</p>
+              <p className="text-sm font-semibold text-foreground">{u.label}</p>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
           Used for logging exercise weight.
         </p>
       </section>
 
       {profile && (
         <section>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             About you
           </h2>
-          <div className="flex flex-col gap-1 rounded-xl bg-card p-4 text-sm">
+          <div className="flex flex-col gap-1 rounded-xl bg-card p-3 text-xs">
             <Row label="Sex" value={profile.sex} />
             <Row label="Age" value={`${profile.age} yrs`} />
             <Row label="Height" value={`${profile.heightCm} cm`} />
@@ -86,7 +123,7 @@ function ProfilePage() {
       )}
 
       <section>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Daily targets
         </h2>
         <GoalsEditor goals={goals} onSave={setGoals} />
@@ -98,9 +135,9 @@ function ProfilePage() {
             resetOnboarding();
           }
         }}
-        className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+        className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
       >
-        <RotateCcw className="h-4 w-4" />
+        <RotateCcw className="h-3.5 w-3.5" />
         Redo onboarding
       </button>
     </div>

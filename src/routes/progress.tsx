@@ -6,7 +6,7 @@ import { useHydrated } from "@/hooks/useHydrated";
 export const Route = createFileRoute("/progress")({
   head: () => ({
     meta: [
-      { title: "Progress — Movra" },
+      { title: "Progress — FitTrack" },
       { name: "description", content: "Track your fitness streaks and weekly progress." },
     ],
   }),
@@ -111,40 +111,40 @@ function ProgressContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col gap-4 p-4">
+    <div className="flex min-h-screen flex-col gap-3 p-3">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Progress</h1>
-        <p className="text-sm text-muted-foreground">Your fitness journey</p>
+        <h1 className="text-xl font-bold text-foreground">Progress</h1>
+        <p className="text-xs text-muted-foreground">Your fitness journey</p>
       </div>
 
       {/* Streak Card */}
-      <div className="rounded-xl bg-card p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Flame className="h-6 w-6 text-primary" />
+      <div className="rounded-xl bg-card p-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <Flame className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-3xl font-bold text-foreground">{streak}</p>
-            <p className="text-sm text-muted-foreground">Day streak</p>
+            <p className="text-2xl font-bold text-foreground">{streak}</p>
+            <p className="text-xs text-muted-foreground">Day streak</p>
           </div>
         </div>
       </div>
 
       {/* ============ GYM SECTION ============ */}
-      <div className="flex items-center gap-2 pt-1">
-        <Dumbbell className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-2">
+        <Dumbbell className="h-3.5 w-3.5 text-primary" />
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Gym tracking
         </h2>
       </div>
 
       {/* This Week — gym */}
-      <div className="rounded-xl bg-card p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-foreground">This Week</h2>
-          <div className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
-            <TrendingUp className="h-3.5 w-3.5" />
+      <div className="rounded-xl bg-card p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-base font-bold text-foreground">This Week</h2>
+          <div className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+            <TrendingUp className="h-3 w-3" />
             {weekProgress.total > 0
               ? `${Math.round((weekProgress.completed / weekProgress.total) * 100)}%`
               : "0%"}
@@ -152,14 +152,14 @@ function ProgressContent() {
         </div>
 
         {/* Day Grid */}
-        <div className="mb-3 grid grid-cols-7 gap-2">
+        <div className="mb-2 grid grid-cols-7 gap-1.5">
           {weekDays.map((day) => (
             <div key={day.day} className="flex flex-col items-center gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 {day.label}
               </span>
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
                   day.isToday
                     ? "border-2 border-primary text-primary"
                     : day.completed
@@ -172,13 +172,13 @@ function ProgressContent() {
                 }`}
               >
                 {day.completed ? (
-                  <Trophy className="h-4 w-4" />
+                  <Trophy className="h-3 w-3" />
                 ) : day.partial ? (
-                  <span className="text-xs">
+                  <span className="text-[10px]">
                     {day.completedCount}/{day.exerciseCount}
                   </span>
                 ) : (
-                  <span className="text-xs">-</span>
+                  <span className="text-[10px]">-</span>
                 )}
               </div>
             </div>
@@ -186,13 +186,13 @@ function ProgressContent() {
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Completion</span>
-          <span className="text-xs font-bold text-foreground">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">Completion</span>
+          <span className="text-[10px] font-bold text-foreground">
             {weekProgress.completed}/{weekProgress.total} days
           </span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary transition-all duration-500"
             style={{
@@ -203,23 +203,23 @@ function ProgressContent() {
       </div>
 
       {/* Past Weeks */}
-      <div className="rounded-xl bg-card p-4">
-        <h2 className="mb-3 text-lg font-bold text-foreground">Past Weeks</h2>
+      <div className="rounded-xl bg-card p-3">
+        <h2 className="mb-2 text-base font-bold text-foreground">Past Weeks</h2>
         {pastWeeks.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
+          <p className="py-3 text-center text-xs text-muted-foreground">
             No history yet. Keep logging your workouts!
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {pastWeeks.map((week) => (
               <div key={week.label}>
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="text-sm text-foreground">{week.label}</span>
-                  <span className="text-sm font-bold text-primary">
+                  <span className="text-xs text-foreground">{week.label}</span>
+                  <span className="text-xs font-bold text-primary">
                     {week.completed}/{week.total}
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="h-1 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-primary"
                     style={{ width: `${week.rate}%` }}
@@ -232,49 +232,49 @@ function ProgressContent() {
       </div>
 
       {/* ============ CALORIE SECTION ============ */}
-      <div className="flex items-center gap-2 pt-2">
-        <UtensilsCrossed className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-2">
+        <UtensilsCrossed className="h-3.5 w-3.5 text-primary" />
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Calorie tracking
         </h2>
       </div>
 
       {/* Today's calories */}
-      <div className="rounded-xl bg-card p-4">
-        <div className="mb-3 flex items-end justify-between">
+      <div className="rounded-xl bg-card p-3">
+        <div className="mb-2 flex items-end justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               Today
             </p>
-            <p className="text-3xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground">
               {todayCalories}
-              <span className="ml-1 text-base font-normal text-muted-foreground">
+              <span className="ml-1 text-xs font-normal text-muted-foreground">
                 / {goals.calories}
               </span>
             </p>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-foreground">{todayProtein}g</p>
+            <p className="text-base font-bold text-foreground">{todayProtein}g</p>
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
               protein
             </p>
           </div>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary transition-all"
             style={{ width: `${calPct}%` }}
           />
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
           {Math.max(0, goals.calories - todayCalories)} kcal left
         </p>
       </div>
 
       {/* Weekly calorie bars */}
-      <div className="rounded-xl bg-card p-4">
-        <h2 className="mb-3 text-lg font-bold text-foreground">This Week</h2>
-        <div className="flex h-32 items-end justify-between gap-2">
+      <div className="rounded-xl bg-card p-3">
+        <h2 className="mb-2 text-base font-bold text-foreground">This Week</h2>
+        <div className="flex h-24 items-end justify-between gap-1.5">
           {weekDays.map((d) => {
             const pct = Math.round((d.calories / maxWeekCals) * 100);
             const hitGoal =
@@ -284,12 +284,12 @@ function ProgressContent() {
             return (
               <div
                 key={d.day}
-                className="flex flex-1 flex-col items-center gap-1"
+                className="flex flex-1 flex-col items-center gap-0.5"
               >
                 <span className="text-[10px] font-bold text-foreground">
                   {d.calories > 0 ? d.calories : ""}
                 </span>
-                <div className="flex h-20 w-full items-end overflow-hidden rounded-md bg-muted">
+                <div className="flex h-16 w-full items-end overflow-hidden rounded-md bg-muted">
                   <div
                     className={`w-full rounded-md transition-all ${
                       hitGoal
@@ -312,26 +312,26 @@ function ProgressContent() {
             );
           })}
         </div>
-        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
           <span>Goal: {goals.calories} kcal</span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-sm bg-primary" />
+            <span className="inline-block h-1.5 w-1.5 rounded-sm bg-primary" />
             on target
           </span>
         </div>
       </div>
 
       {/* Total Workouts */}
-      <div className="rounded-xl bg-card p-4">
-        <h2 className="mb-3 text-lg font-bold text-foreground">All Time</h2>
-        <div className="grid grid-cols-2 gap-3">
+      <div className="rounded-xl bg-card p-3">
+        <h2 className="mb-2 text-base font-bold text-foreground">All Time</h2>
+        <div className="grid grid-cols-2 gap-2">
           <StatCard
             label="Workouts Done"
             value={Object.values(store.logs).reduce(
               (sum, log) => sum + log.exercisesCompleted.length,
               0
             )}
-            icon={<Trophy className="h-5 w-5" />}
+            icon={<Trophy className="h-4 w-4" />}
           />
           <StatCard
             label="Meals Logged"
@@ -339,7 +339,7 @@ function ProgressContent() {
               (sum, log) => sum + log.food.length,
               0
             )}
-            icon={<CalendarDays className="h-5 w-5" />}
+            icon={<CalendarDays className="h-4 w-4" />}
           />
         </div>
       </div>
@@ -357,13 +357,13 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-surface p-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+    <div className="flex items-center gap-2.5 rounded-lg bg-surface p-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
         {icon}
       </div>
       <div>
-        <p className="text-xl font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-lg font-bold text-foreground">{value}</p>
+        <p className="text-[10px] text-muted-foreground">{label}</p>
       </div>
     </div>
   );

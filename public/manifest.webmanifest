@@ -1,6 +1,6 @@
 {
-  "name": "Movra",
-  "short_name": "Movra",
+  "name": "FitTrack",
+  "short_name": "FitTrack",
   "description": "Simple fitness & food tracker. One screen at a time.",
   "start_url": "/",
   "scope": "/",

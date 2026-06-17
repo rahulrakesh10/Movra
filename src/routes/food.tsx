@@ -9,12 +9,17 @@ import {
   Loader2,
   Settings as SettingsIcon,
   Check,
+  Utensils,
+  Pencil,
 } from "lucide-react";
 import {
   useFitnessStore,
   getTodayISO,
   MEAL_LABELS,
   type Goals,
+  type MealItem,
+  type Meal,
+  type FoodEntry,
 } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
 import { lookupBarcode, searchFoods, type FoodResult } from "@/lib/foodApi";
@@ -23,7 +28,7 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 export const Route = createFileRoute("/food")({
   head: () => ({
     meta: [
-      { title: "Food — Movra" },
+      { title: "Food — FitTrack" },
       {
         name: "description",
         content:
@@ -71,7 +76,7 @@ type MealType = (typeof MEAL_TYPES)[number];
 function FoodPage() {
   const hydrated = useHydrated();
   if (!hydrated) {
-    return <div className="flex min-h-screen flex-col gap-4 p-4" />;
+    return <div className="flex min-h-screen flex-col gap-3 p-3" />;
   }
   return <FoodContent />;
 }
@@ -96,6 +101,14 @@ function FoodContent() {
   const [showAdd, setShowAdd] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("breakfast");
+  const [mealEditor, setMealEditor] = useState<
+    { mode: "create" } | { mode: "edit"; meal: Meal } | null
+  >(null);
+  const [logTarget, setLogTarget] = useState<Meal | null>(null);
+
+  const meals = store.mealOrder
+    .map((id) => store.meals[id])
+    .filter(Boolean) as Meal[];
 
   const foodByMeal = MEAL_TYPES.map((meal) => ({
     meal,
@@ -103,12 +116,12 @@ function FoodContent() {
   }));
 
   return (
-    <div className="flex min-h-screen flex-col gap-4 p-4">
+    <div className="flex min-h-screen flex-col gap-3 p-3">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Food Log</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold text-foreground">Food Log</h1>
+          <p className="text-xs text-muted-foreground">
             {new Date().toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -117,32 +130,32 @@ function FoodContent() {
         </div>
         <button
           onClick={() => setShowGoals(true)}
-          className="rounded-full bg-card p-2 text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-full bg-card p-1.5 text-muted-foreground transition-colors hover:text-foreground"
           aria-label="Edit goals"
         >
-          <SettingsIcon className="h-4 w-4" />
+          <SettingsIcon className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* Goals Summary */}
-      <div className="rounded-xl bg-card p-4">
-        <div className="mb-3 flex items-end justify-between">
+      <div className="rounded-xl bg-card p-3">
+        <div className="mb-2 flex items-end justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               Calories
             </p>
-            <p className="text-3xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground">
               {totalCalories}
-              <span className="ml-1 text-base font-normal text-muted-foreground">
+              <span className="ml-1 text-xs font-normal text-muted-foreground">
                 / {goals.calories}
               </span>
             </p>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
+          <div className="text-right text-[10px] text-muted-foreground">
             {Math.max(0, goals.calories - totalCalories)} kcal left
           </div>
         </div>
-        <div className="mb-3 h-2 overflow-hidden rounded-full bg-muted">
+        <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary transition-all"
             style={{
@@ -180,9 +193,9 @@ function FoodContent() {
       {!showAdd ? (
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
           Log Food
         </button>
       ) : (
@@ -196,8 +209,72 @@ function FoodContent() {
         />
       )}
 
+      {/* My Meals */}
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            My Meals
+          </h3>
+          <button
+            onClick={() => setMealEditor({ mode: "create" })}
+            className="flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
+          >
+            <Plus className="h-3 w-3" /> New
+          </button>
+        </div>
+        {meals.length === 0 ? (
+          <button
+            onClick={() => setMealEditor({ mode: "create" })}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Utensils className="h-3.5 w-3.5" />
+            Create a meal to one-tap log it
+          </button>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {meals.map((m) => {
+              const cals = Math.round(
+                m.items.reduce((s, i) => s + i.calories, 0)
+              );
+              const prot = Math.round(
+                m.items.reduce((s, i) => s + i.protein, 0)
+              );
+              return (
+                <div
+                  key={m.id}
+                  className="relative rounded-xl bg-card p-2.5"
+                >
+                  <button
+                    onClick={() => setLogTarget(m)}
+                    className="flex w-full flex-col items-start text-left"
+                  >
+                    <p className="truncate text-xs font-bold text-foreground">
+                      {m.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {cals} kcal · P{prot}g · {m.items.length} item
+                      {m.items.length === 1 ? "" : "s"}
+                    </p>
+                    <span className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                      <Plus className="h-2.5 w-2.5" /> Log
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setMealEditor({ mode: "edit", meal: m })}
+                    aria-label="Edit meal"
+                    className="absolute right-1 top-1 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Today's Food by Meal */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {foodByMeal.map(({ meal, items }) => {
           if (items.length === 0) return null;
           const mealCals = Math.round(
@@ -205,11 +282,11 @@ function FoodContent() {
           );
           return (
             <div key={meal}>
-              <div className="mb-2 flex items-baseline justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <div className="mb-1 flex items-baseline justify-between">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   {MEAL_LABELS[meal]}
                 </h3>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground">
                   {mealCals} kcal
                 </span>
               </div>
@@ -217,25 +294,25 @@ function FoodContent() {
                 {items.map((food) => (
                   <div
                     key={food.id}
-                    className="flex items-center justify-between rounded-lg bg-card px-3 py-2"
+                    className="flex items-center justify-between rounded-lg bg-card px-3 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-foreground">
+                      <p className="truncate text-xs text-foreground">
                         {food.name}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground">
                         P:{food.protein}g · C:{food.carbs}g · F:{food.fat}g
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-foreground">
+                      <span className="text-xs font-bold text-foreground">
                         {Math.round(food.calories)}
                       </span>
                       <button
                         onClick={() => store.removeFood(todayISO, food.id)}
                         className="rounded p-1 text-muted-foreground transition-colors hover:text-destructive"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
@@ -246,9 +323,9 @@ function FoodContent() {
         })}
 
         {todayLog.food.length === 0 && !showAdd && (
-          <div className="rounded-xl border border-dashed border-border py-8 text-center">
-            <p className="text-sm text-muted-foreground">No food logged today</p>
-            <p className="text-xs text-muted-foreground/60">
+          <div className="rounded-xl border border-dashed border-border py-6 text-center">
+            <p className="text-xs text-muted-foreground">No food logged today</p>
+            <p className="text-[10px] text-muted-foreground/60">
               Tap "Log Food" to get started
             </p>
           </div>
@@ -263,6 +340,40 @@ function FoodContent() {
             setShowGoals(false);
           }}
           onClose={() => setShowGoals(false)}
+        />
+      )}
+
+      {mealEditor && (
+        <MealEditorDialog
+          initial={mealEditor.mode === "edit" ? mealEditor.meal : null}
+          onClose={() => setMealEditor(null)}
+          onSave={(name, items) => {
+            if (mealEditor.mode === "edit") {
+              store.updateMeal(mealEditor.meal.id, { name, items });
+            } else {
+              store.createMeal(name, items);
+            }
+            setMealEditor(null);
+          }}
+          onDelete={
+            mealEditor.mode === "edit"
+              ? () => {
+                  store.deleteMeal(mealEditor.meal.id);
+                  setMealEditor(null);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {logTarget && (
+        <MealTypePicker
+          mealName={logTarget.name}
+          onPick={(mt) => {
+            store.logMeal(todayISO, logTarget.id, mt);
+            setLogTarget(null);
+          }}
+          onClose={() => setLogTarget(null)}
         />
       )}
     </div>
@@ -742,5 +853,242 @@ function GoalInput({
         <span className="text-xs text-muted-foreground">{unit}</span>
       </div>
     </label>
+  );
+}
+
+/* -------------------- Meal Type Picker -------------------- */
+
+function MealTypePicker({
+  mealName,
+  onPick,
+  onClose,
+}: {
+  mealName: string;
+  onPick: (mt: FoodEntry["mealType"]) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-card p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Log meal as
+            </p>
+            <h2 className="text-base font-bold text-foreground">{mealName}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {MEAL_TYPES.map((mt) => (
+            <button
+              key={mt}
+              onClick={() => onPick(mt)}
+              className="rounded-lg bg-surface px-3 py-3 text-sm font-bold text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+            >
+              {MEAL_LABELS[mt]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- Meal Editor Dialog -------------------- */
+
+function MealEditorDialog({
+  initial,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  initial: Meal | null;
+  onSave: (name: string, items: MealItem[]) => void;
+  onDelete?: () => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [items, setItems] = useState<MealItem[]>(initial?.items ?? []);
+  const [showPicker, setShowPicker] = useState(false);
+  const [showCustom, setShowCustom] = useState(false);
+
+  const totals = items.reduce(
+    (acc, it) => ({
+      calories: acc.calories + it.calories,
+      protein: acc.protein + it.protein,
+      carbs: acc.carbs + it.carbs,
+      fat: acc.fat + it.fat,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-card p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-base font-bold text-foreground">
+            {initial ? "Edit Meal" : "New Meal"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <input
+          type="text"
+          placeholder="Meal name (e.g. Post-workout shake)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mb-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+        />
+
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Items ({items.length})
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {Math.round(totals.calories)} kcal · P
+            {Math.round(totals.protein)}g · C{Math.round(totals.carbs)}g · F
+            {Math.round(totals.fat)}g
+          </p>
+        </div>
+
+        <div className="mb-2 flex flex-1 flex-col gap-1 overflow-y-auto no-scrollbar">
+          {items.length === 0 && (
+            <p className="py-3 text-center text-xs text-muted-foreground">
+              Add foods that make up this meal.
+            </p>
+          )}
+          {items.map((it, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-lg bg-surface px-3 py-1.5"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs text-foreground">{it.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  P:{it.protein}g · C:{it.carbs}g · F:{it.fat}g
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-foreground">
+                  {Math.round(it.calories)}
+                </span>
+                <button
+                  onClick={() =>
+                    setItems(items.filter((_, idx) => idx !== i))
+                  }
+                  className="rounded p-1 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-3 flex gap-2">
+          <button
+            onClick={() => {
+              setShowCustom(false);
+              setShowPicker((v) => !v);
+            }}
+            className="flex-1 rounded-lg bg-surface py-2 text-xs font-bold text-foreground hover:bg-muted"
+          >
+            + From list
+          </button>
+          <button
+            onClick={() => {
+              setShowPicker(false);
+              setShowCustom((v) => !v);
+            }}
+            className="flex-1 rounded-lg bg-surface py-2 text-xs font-bold text-foreground hover:bg-muted"
+          >
+            + Custom
+          </button>
+        </div>
+
+        {showPicker && (
+          <div className="mb-3 max-h-48 overflow-y-auto rounded-lg border border-border bg-surface p-1 no-scrollbar">
+            {COMMON_FOODS.map((f) => (
+              <button
+                key={f.name}
+                onClick={() => {
+                  setItems([...items, f]);
+                }}
+                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-foreground hover:bg-card"
+              >
+                <span className="truncate">{f.name}</span>
+                <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">
+                  {f.calories} kcal
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showCustom && (
+          <CustomFoodForm
+            onCancel={() => setShowCustom(false)}
+            onAdd={(food) => {
+              setItems([
+                ...items,
+                {
+                  name: food.name,
+                  calories: food.calories,
+                  protein: food.protein,
+                  carbs: food.carbs,
+                  fat: food.fat,
+                },
+              ]);
+              setShowCustom(false);
+            }}
+          />
+        )}
+
+        <div className="mt-2 flex gap-2">
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="rounded-lg bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive/20"
+            >
+              Delete
+            </button>
+          )}
+          <button
+            onClick={() => {
+              if (!name.trim() || items.length === 0) return;
+              onSave(name.trim(), items);
+            }}
+            disabled={!name.trim() || items.length === 0}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+          >
+            <Check className="h-3.5 w-3.5" />
+            {initial ? "Save changes" : "Create meal"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

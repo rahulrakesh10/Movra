@@ -6,7 +6,7 @@ import { useHydrated } from "@/hooks/useHydrated";
 export const Route = createFileRoute("/progress")({
   head: () => ({
     meta: [
-      { title: "Progress — FitTrack" },
+      { title: "Progress — Movra" },
       { name: "description", content: "Track your fitness streaks and weekly progress." },
     ],
   }),
@@ -31,15 +31,9 @@ function ProgressContent() {
 
   // ----- Calorie tracking -----
   const todayLog = store.getDayLog(getTodayISO());
-  const todayCalories = Math.round(
-    todayLog.food.reduce((s, f) => s + f.calories, 0)
-  );
-  const todayProtein = Math.round(
-    todayLog.food.reduce((s, f) => s + f.protein, 0)
-  );
-  const calPct = goals.calories > 0
-    ? Math.min(100, (todayCalories / goals.calories) * 100)
-    : 0;
+  const todayCalories = Math.round(todayLog.food.reduce((s, f) => s + f.calories, 0));
+  const todayProtein = Math.round(todayLog.food.reduce((s, f) => s + f.protein, 0));
+  const calPct = goals.calories > 0 ? Math.min(100, (todayCalories / goals.calories) * 100) : 0;
 
   // Build week data for display
   const today = new Date();
@@ -54,7 +48,8 @@ function ProgressContent() {
     const iso = d.toISOString().split("T")[0];
     const routineExercises = store.getTemplateForDay(day)?.exercises || [];
     const log = store.logs[iso] || { exercisesCompleted: [], food: [] };
-    const completed = routineExercises.length > 0 && log.exercisesCompleted.length === routineExercises.length;
+    const completed =
+      routineExercises.length > 0 && log.exercisesCompleted.length === routineExercises.length;
     const partial = routineExercises.length > 0 && log.exercisesCompleted.length > 0 && !completed;
     const isToday = iso === new Date().toISOString().split("T")[0];
     const hasRoutine = routineExercises.length > 0;
@@ -111,11 +106,11 @@ function ProgressContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col gap-3 p-3">
+    <div className="flex min-h-screen flex-col gap-4 p-4">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-foreground">Progress</h1>
-        <p className="text-xs text-muted-foreground">Your fitness journey</p>
+        <h1 className="text-3xl font-bold text-foreground">Progress</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Your fitness journey</p>
       </div>
 
       {/* Streak Card */}
@@ -194,7 +189,7 @@ function ProgressContent() {
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-primary transition-all duration-500"
+            className="h-full rounded-full bg-primary transition-all duration-200"
             style={{
               width: `${weekProgress.total > 0 ? (weekProgress.completed / weekProgress.total) * 100 : 0}%`,
             }}
@@ -255,9 +250,7 @@ function ProgressContent() {
           </div>
           <div className="text-right">
             <p className="text-base font-bold text-foreground">{todayProtein}g</p>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              protein
-            </p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">protein</p>
           </div>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -282,21 +275,14 @@ function ProgressContent() {
               d.calories >= goals.calories * 0.9 &&
               d.calories <= goals.calories * 1.1;
             return (
-              <div
-                key={d.day}
-                className="flex flex-1 flex-col items-center gap-0.5"
-              >
+              <div key={d.day} className="flex flex-1 flex-col items-center gap-0.5">
                 <span className="text-[10px] font-bold text-foreground">
                   {d.calories > 0 ? d.calories : ""}
                 </span>
                 <div className="flex h-16 w-full items-end overflow-hidden rounded-md bg-muted">
                   <div
                     className={`w-full rounded-md transition-all ${
-                      hitGoal
-                        ? "bg-primary"
-                        : d.calories > 0
-                          ? "bg-primary/40"
-                          : "bg-transparent"
+                      hitGoal ? "bg-primary" : d.calories > 0 ? "bg-primary/40" : "bg-transparent"
                     }`}
                     style={{ height: `${pct}%` }}
                   />
@@ -329,16 +315,13 @@ function ProgressContent() {
             label="Workouts Done"
             value={Object.values(store.logs).reduce(
               (sum, log) => sum + log.exercisesCompleted.length,
-              0
+              0,
             )}
             icon={<Trophy className="h-4 w-4" />}
           />
           <StatCard
             label="Meals Logged"
-            value={Object.values(store.logs).reduce(
-              (sum, log) => sum + log.food.length,
-              0
-            )}
+            value={Object.values(store.logs).reduce((sum, log) => sum + log.food.length, 0)}
             icon={<CalendarDays className="h-4 w-4" />}
           />
         </div>
@@ -347,15 +330,7 @@ function ProgressContent() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-}) {
+function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2.5 rounded-lg bg-surface p-2.5">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">

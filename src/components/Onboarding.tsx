@@ -68,20 +68,21 @@ export function Onboarding() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-[100dvh] flex-col bg-background">
       {/* Progress bar */}
-      <div className="h-1 w-full bg-muted">
+      <div className="h-1 w-full bg-muted flex-shrink-0">
         <div
-          className="h-full bg-primary transition-all duration-300"
+          className="h-full bg-primary transition-all duration-150"
           style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
         />
       </div>
 
-      <div className="flex flex-1 flex-col gap-6 p-6">
+      {/* Scrollable Step Content */}
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-4 flex flex-col gap-4">
         {step > 0 && (
           <button
             onClick={back}
-            className="flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground flex-shrink-0"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
@@ -89,19 +90,17 @@ export function Onboarding() {
         )}
 
         {step === 0 && (
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Dumbbell className="h-8 w-8 text-primary" />
+          <div className="flex flex-1 flex-col items-center justify-center text-center py-4">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+              <Dumbbell className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome to FitTrack</h1>
-            <p className="mt-3 max-w-xs text-sm text-muted-foreground">
+            <h1 className="text-2xl font-bold text-foreground">Welcome to Movra</h1>
+            <p className="mt-2 max-w-xs text-sm text-muted-foreground">
               Let's set up your plan. Takes 60 seconds.
             </p>
 
-            <div className="mt-10 w-full max-w-xs">
-              <p className="mb-3 text-sm font-medium text-foreground">
-                Which unit do you prefer?
-              </p>
+            <div className="mt-8 w-full max-w-xs">
+              <p className="mb-3 text-sm font-medium text-foreground">Which unit do you prefer?</p>
               <div className="grid grid-cols-2 gap-2">
                 <ToggleCard
                   selected={unit === "metric"}
@@ -123,7 +122,10 @@ export function Onboarding() {
 
         {step === 1 && (
           <div className="flex flex-col gap-4">
-            <StepHeader title="What's your goal?" subtitle="We'll tune your calories around this." />
+            <StepHeader
+              title="What's your goal?"
+              subtitle="We'll tune your calories around this."
+            />
             <div className="flex flex-col gap-2">
               {GOAL_OPTIONS.map((opt) => (
                 <OptionCard
@@ -160,12 +162,9 @@ export function Onboarding() {
 
         {step === 3 && (
           <div className="flex flex-col gap-4">
-            <StepHeader
-              title="Days per week"
-              subtitle="How often will you train?"
-            />
-            <div className="rounded-xl bg-card p-6 text-center">
-              <p className="text-6xl font-bold text-foreground">{daysPerWeek}</p>
+            <StepHeader title="Days per week" subtitle="How often will you train?" />
+            <div className="rounded-xl bg-card p-5 text-center">
+              <p className="text-5xl font-bold text-foreground">{daysPerWeek}</p>
               <p className="mt-1 text-sm text-muted-foreground">days / week</p>
             </div>
             <input
@@ -191,9 +190,20 @@ export function Onboarding() {
             <StepHeader title="About you" subtitle="Used to calculate your calorie goal." />
             <div className="grid grid-cols-2 gap-2">
               <ToggleCard selected={sex === "male"} onClick={() => setSex("male")} label="Male" />
-              <ToggleCard selected={sex === "female"} onClick={() => setSex("female")} label="Female" />
+              <ToggleCard
+                selected={sex === "female"}
+                onClick={() => setSex("female")}
+                label="Female"
+              />
             </div>
-            <NumberField label="Age" value={age} onChange={setAge} min={13} max={100} suffix="yrs" />
+            <NumberField
+              label="Age"
+              value={age}
+              onChange={setAge}
+              min={13}
+              max={100}
+              suffix="yrs"
+            />
 
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Units</span>
@@ -201,7 +211,9 @@ export function Onboarding() {
                 <button
                   onClick={() => setUnit("imperial")}
                   className={`rounded-md px-3 py-1 text-xs font-medium ${
-                    unit === "imperial" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    unit === "imperial"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
                   lb / ft
@@ -209,7 +221,9 @@ export function Onboarding() {
                 <button
                   onClick={() => setUnit("metric")}
                   className={`rounded-md px-3 py-1 text-xs font-medium ${
-                    unit === "metric" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    unit === "metric"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
                   kg / cm
@@ -261,7 +275,10 @@ export function Onboarding() {
 
         {step === 5 && (
           <div className="flex flex-col gap-4">
-            <StepHeader title="Activity outside the gym" subtitle="Be honest — affects your calories." />
+            <StepHeader
+              title="Activity outside the gym"
+              subtitle="Be honest — affects your calories."
+            />
             <div className="flex flex-col gap-2">
               {ACTIVITY_OPTIONS.map((opt) => (
                 <OptionCard
@@ -279,8 +296,8 @@ export function Onboarding() {
         {step === 6 && (
           <div className="flex flex-col gap-4">
             <StepHeader title="Your daily targets" subtitle="You can tweak these anytime." />
-            <div className="rounded-xl bg-card p-6 text-center">
-              <p className="text-5xl font-bold text-foreground">{previewGoals.calories}</p>
+            <div className="rounded-xl bg-card p-5 text-center">
+              <p className="text-4xl font-bold text-foreground">{previewGoals.calories}</p>
               <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
                 calories / day
               </p>
@@ -291,7 +308,8 @@ export function Onboarding() {
               <MacroCard label="Fat" value={previewGoals.fat} color="text-amber-400" />
             </div>
             <div className="rounded-xl bg-card p-4 text-sm text-muted-foreground">
-              We'll set up a <span className="font-semibold text-foreground">{daysPerWeek}-day</span>{" "}
+              We'll set up a{" "}
+              <span className="font-semibold text-foreground">{daysPerWeek}-day</span>{" "}
               <span className="font-semibold text-foreground">
                 {LIFTING_OPTIONS.find((o) => o.value === liftingGoal)?.label.toLowerCase()}
               </span>{" "}
@@ -300,16 +318,20 @@ export function Onboarding() {
             </div>
           </div>
         )}
+      </div>
 
-        <div className="mt-auto pt-4">
-          <button
-            onClick={step === totalSteps - 1 ? finish : next}
-            className="flex w-full items-center justify-center gap-1 rounded-xl bg-primary py-3.5 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            {step === 0 ? "Get started" : step === totalSteps - 1 ? "Start tracking" : "Continue"}
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
+      {/* Fixed bottom CTA Button */}
+      <div
+        className="px-5 pt-2 flex-shrink-0 bg-background border-t border-border/5"
+        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+      >
+        <button
+          onClick={step === totalSteps - 1 ? finish : next}
+          className="flex w-full items-center justify-center gap-1 rounded-xl bg-primary py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          {step === 0 ? "Get started" : step === totalSteps - 1 ? "Start tracking" : "Continue"}
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -318,8 +340,8 @@ export function Onboarding() {
 function StepHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h2 className="text-2xl font-bold text-foreground">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+      <h2 className="text-xl font-bold text-foreground">{title}</h2>
+      <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
     </div>
   );
 }
@@ -338,13 +360,11 @@ function OptionCard({
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl border p-4 text-left transition-all ${
-        selected
-          ? "border-primary bg-primary/10"
-          : "border-border bg-card hover:border-primary/40"
+      className={`rounded-xl border p-3 text-left transition-all ${
+        selected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
       }`}
     >
-      <p className="text-base font-semibold text-foreground">{label}</p>
+      <p className="text-sm font-semibold text-foreground">{label}</p>
       <p className="text-xs text-muted-foreground">{desc}</p>
     </button>
   );

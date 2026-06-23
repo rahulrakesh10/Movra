@@ -1,10 +1,33 @@
 import { useState } from "react";
-import { Check, ChevronLeft, Plus, Search, X } from "lucide-react";
+import {
+  Activity,
+  ArrowUp,
+  Check,
+  ChevronLeft,
+  Dumbbell,
+  Flame,
+  Footprints,
+  HeartPulse,
+  Plus,
+  Search,
+  Target,
+  X,
+} from "lucide-react";
 import {
   EXERCISE_LIBRARY,
   type ExerciseCategory,
   type LibraryExercise,
 } from "@/lib/exerciseLibrary";
+
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  chest: Dumbbell,
+  back: Activity,
+  shoulders: ArrowUp,
+  arms: Target,
+  legs: Footprints,
+  core: Flame,
+  cardio: HeartPulse,
+};
 
 export function ExercisePickerModal({
   existingNames = [],
@@ -21,10 +44,10 @@ export function ExercisePickerModal({
   const [query, setQuery] = useState("");
 
   const filtered = category
-    ? category.exercises.filter((e) =>
-        e.name.toLowerCase().includes(query.toLowerCase())
-      )
+    ? category.exercises.filter((e) => e.name.toLowerCase().includes(query.toLowerCase()))
     : [];
+
+  const CategoryIcon = category ? CATEGORY_ICONS[category.id] : null;
 
   return (
     <div
@@ -33,7 +56,8 @@ export function ExercisePickerModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-t-2xl bg-card sm:rounded-2xl"
+        className="sheet-animate flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-card sm:rounded-2xl"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center gap-2 border-b border-border p-3">
           {category && (
@@ -48,10 +72,9 @@ export function ExercisePickerModal({
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
-          <h3 className="flex-1 text-base font-bold text-foreground">
-            {category
-              ? `${category.emoji} ${category.name}`
-              : title || "Pick a category"}
+          <h3 className="flex items-center gap-2 text-base font-bold text-foreground">
+            {CategoryIcon && <CategoryIcon className="h-4 w-4 text-primary" />}
+            {category ? category.name : title || "Pick a category"}
           </h3>
           <button
             onClick={onClose}
@@ -63,22 +86,27 @@ export function ExercisePickerModal({
         </div>
 
         {!category ? (
-          <div className="grid grid-cols-2 gap-2 overflow-y-auto p-3">
-            {EXERCISE_LIBRARY.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setCategory(cat)}
-                className="flex flex-col items-start gap-1 rounded-xl bg-surface p-3 text-left transition-colors hover:bg-primary/10"
-              >
-                <span className="text-xl">{cat.emoji}</span>
-                <span className="text-sm font-bold text-foreground">
-                  {cat.name}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {cat.exercises.length} exercises
-                </span>
-              </button>
-            ))}
+          <div className="grid flex-1 min-h-0 grid-cols-2 gap-2 overflow-y-auto p-3">
+            {EXERCISE_LIBRARY.map((cat) => {
+              const Icon = CATEGORY_ICONS[cat.id];
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategory(cat)}
+                  className="flex flex-col items-start gap-2 rounded-xl bg-surface p-3 text-left transition-colors hover:bg-primary/10"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    {Icon && <Icon className="h-4 w-4" />}
+                  </div>
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="text-sm font-bold text-foreground">{cat.name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {cat.exercises.length} exercises
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         ) : (
           <>
@@ -95,24 +123,23 @@ export function ExercisePickerModal({
                 />
               </div>
             </div>
-            <div className="flex flex-col gap-1 overflow-y-auto p-2.5">
+            <div className="flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto p-2.5">
               {filtered.length === 0 && (
-                <p className="py-4 text-center text-xs text-muted-foreground">
-                  No matches
-                </p>
+                <p className="py-4 text-center text-xs text-muted-foreground">No matches</p>
               )}
               {filtered.map((ex) => {
                 const added = existingNames.includes(ex.name.toLowerCase());
                 return (
                   <button
                     key={ex.name}
-                    onClick={() => onPick(ex)}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-surface px-3 py-2 text-left transition-colors hover:bg-primary/10"
+                    disabled={added}
+                    onClick={() => !added && onPick(ex)}
+                    className={`flex items-center justify-between gap-2 rounded-lg bg-surface px-3 py-2 text-left transition-colors ${
+                      added ? "cursor-default opacity-60" : "hover:bg-primary/10"
+                    }`}
                   >
                     <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {ex.name}
-                      </p>
+                      <p className="text-sm font-medium text-foreground">{ex.name}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {ex.defaultSets} × {ex.defaultReps}
                       </p>

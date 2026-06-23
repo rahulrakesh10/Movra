@@ -4,10 +4,11 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useMatchRoute,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ReactNode, type ComponentType } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -78,6 +79,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "",
+      },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap",
+      },
       {
         rel: "stylesheet",
         href: appCss,
@@ -89,16 +100,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
-      { title: "FitTrack" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+      },
+      { title: "Movra" },
       { name: "description", content: "Simple fitness & food tracker. One screen at a time." },
       { name: "theme-color", content: "#0a0a0a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "FitTrack" },
+      { name: "apple-mobile-web-app-title", content: "Movra" },
       { name: "mobile-web-app-capable", content: "yes" },
-      { property: "og:title", content: "FitTrack" },
-      { property: "og:description", content: "Simple fitness & food tracker. One screen at a time." },
+      { property: "og:title", content: "Movra" },
+      {
+        property: "og:description",
+        content: "Simple fitness & food tracker. One screen at a time.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -125,8 +143,37 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+type NavItemDef = { to: string; label: string; icon: ComponentType<{ className?: string }> };
+
+function NavTab({ item }: { item: NavItemDef }) {
+  const matchRoute = useMatchRoute();
+  const isActive = !!matchRoute({ to: item.to, fuzzy: item.to !== "/" });
+  return (
+    <Link to={item.to} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2">
+      <div
+        className={`flex items-center justify-center rounded-full px-3 py-1 transition-all duration-100 ${
+          isActive ? "bg-primary/10" : ""
+        }`}
+      >
+        <item.icon
+          className={`h-5 w-5 transition-colors duration-100 ${
+            isActive ? "text-primary" : "text-muted-foreground"
+          }`}
+        />
+      </div>
+      <span
+        className={`text-[10px] font-semibold leading-none tracking-wide transition-colors duration-100 ${
+          isActive ? "text-primary" : "text-muted-foreground"
+        }`}
+      >
+        {item.label}
+      </span>
+    </Link>
+  );
+}
+
 function BottomNav() {
-  const navItems = [
+  const navItems: NavItemDef[] = [
     { to: "/", label: "Today", icon: Dumbbell },
     { to: "/routine", label: "Routine", icon: CalendarDays },
     { to: "/food", label: "Food", icon: UtensilsCrossed },
@@ -135,20 +182,13 @@ function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-sm justify-around py-1.5">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="flex w-full items-stretch px-1 py-1">
         {navItems.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            activeProps={{ className: "text-primary" }}
-            inactiveProps={{ className: "text-muted-foreground" }}
-            activeOptions={{ exact: item.to === "/" }}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors"
-          >
-            <item.icon className="h-[18px] w-[18px]" />
-            <span className="text-[10px] font-medium">{item.label}</span>
-          </Link>
+          <NavTab key={item.to} item={item} />
         ))}
       </div>
     </nav>
@@ -167,8 +207,7 @@ function RootComponent() {
     const root = document.documentElement;
     const apply = () => {
       const prefersDark =
-        typeof window !== "undefined" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches;
+        typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
       const useDark = theme === "dark" || (theme === "system" && prefersDark);
       root.classList.toggle("dark", useDark);
     };
@@ -182,7 +221,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`mx-auto min-h-screen max-w-sm bg-background ${showNav ? "pb-16" : ""}`}>
+      <div
+        className="mx-auto min-h-screen max-w-lg bg-background"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: showNav ? "calc(4.5rem + env(safe-area-inset-bottom))" : undefined,
+        }}
+      >
         <Outlet />
       </div>
       {showNav && <BottomNav />}

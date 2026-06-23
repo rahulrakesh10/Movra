@@ -10,13 +10,7 @@ import {
   Shuffle,
   Trophy,
 } from "lucide-react";
-import {
-  useFitnessStore,
-  getTodayISO,
-  getDayName,
-  DAY_LABELS,
-  type Exercise,
-} from "@/store/fitnessStore";
+import { useFitnessStore, getTodayISO, getDayName, type Exercise } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
 import { Onboarding } from "@/components/Onboarding";
 import { ExercisePickerModal } from "@/components/ExercisePicker";
@@ -24,7 +18,7 @@ import { ExercisePickerModal } from "@/components/ExercisePicker";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Today — FitTrack" },
+      { title: "Today — Movra" },
       { name: "description", content: "Your daily workout and food log." },
     ],
   }),
@@ -54,16 +48,11 @@ function TodayContent() {
   const template = store.getTodayTemplate();
   const exercises = template?.exercises || [];
   const templateId = store.weekPlan[todayDay] || null;
-  const weekProgress = store.getWeekProgress();
   const goals = store.goals;
 
   const todayFood = todayLog.food;
-  const totalCalories = Math.round(
-    todayFood.reduce((s, f) => s + f.calories, 0)
-  );
-  const totalProtein = Math.round(
-    todayFood.reduce((s, f) => s + f.protein, 0)
-  );
+  const totalCalories = Math.round(todayFood.reduce((s, f) => s + f.calories, 0));
+  const totalProtein = Math.round(todayFood.reduce((s, f) => s + f.protein, 0));
   const totalCarbs = Math.round(todayFood.reduce((s, f) => s + f.carbs, 0));
   const totalFat = Math.round(todayFood.reduce((s, f) => s + f.fat, 0));
 
@@ -78,42 +67,16 @@ function TodayContent() {
   });
 
   return (
-    <div className="flex min-h-screen flex-col gap-3 p-3">
+    <div className="flex min-h-screen flex-col gap-4 p-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {DAY_LABELS[todayDay]}
-          </p>
-          <h1 className="text-xl font-bold text-foreground">{todayLabel}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold text-foreground">Today</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{todayLabel}</p>
         </div>
-        <div className="flex items-center gap-1 rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-primary">
-          <Flame className="h-3.5 w-3.5" />
+        <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm font-semibold text-primary">
+          <Flame className="h-4 w-4" />
           <span>{store.streak} day streak</span>
-        </div>
-      </div>
-
-      {/* Week Progress */}
-      <div className="rounded-xl bg-card p-3">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">
-            This week
-          </span>
-          <span className="text-xs font-bold text-foreground">
-            {weekProgress.completed}/{weekProgress.total}
-          </span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-500"
-            style={{
-              width: `${
-                weekProgress.total > 0
-                  ? (weekProgress.completed / weekProgress.total) * 100
-                  : 0
-              }%`,
-            }}
-          />
         </div>
       </div>
 
@@ -151,24 +114,43 @@ function TodayContent() {
             <p className="text-xs text-muted-foreground">
               No workout scheduled. Enjoy your rest day.
             </p>
-            <Link
-              to="/routine"
-              className="mt-1 inline-block text-xs font-medium text-primary"
-            >
+            <Link to="/routine" className="mt-1 inline-block text-xs font-medium text-primary">
               Edit weekly plan →
             </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {exercises.map((exercise) => (
-              <TodayExerciseCard
-                key={exercise.id}
-                exercise={exercise}
-                date={todayISO}
-                isDone={todayLog.exercisesCompleted.includes(exercise.id)}
-                templateId={templateId}
-              />
-            ))}
+            {exercises.map((exercise, i) => {
+              const prev = exercises[i - 1];
+              const next = exercises[i + 1];
+              const inSuperset = !!exercise.supersetId;
+              const isFirstOfGroup = inSuperset && prev?.supersetId !== exercise.supersetId;
+              const isLastOfGroup = inSuperset && next?.supersetId !== exercise.supersetId;
+              return (
+                <div key={exercise.id} className="relative">
+                  {inSuperset && (
+                    <div
+                      className={`absolute left-0 top-0 h-full w-0.5 bg-primary/50 ${
+                        isFirstOfGroup ? "rounded-t-full" : ""
+                      } ${isLastOfGroup ? "rounded-b-full" : ""}`}
+                    />
+                  )}
+                  <div className={inSuperset ? "pl-2" : ""}>
+                    {isFirstOfGroup && (
+                      <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-primary">
+                        Superset
+                      </div>
+                    )}
+                    <TodayExerciseCard
+                      exercise={exercise}
+                      date={todayISO}
+                      isDone={todayLog.exercisesCompleted.includes(exercise.id)}
+                      templateId={templateId}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -183,10 +165,7 @@ function TodayContent() {
       <div className="rounded-xl bg-card p-3">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-base font-bold text-foreground">Food Today</h2>
-          <Link
-            to="/food"
-            className="flex items-center gap-1 text-xs font-medium text-primary"
-          >
+          <Link to="/food" className="flex items-center gap-1 text-xs font-medium text-primary">
             Log food
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
@@ -229,12 +208,7 @@ function TodayContent() {
                 goal={goals.carbs}
                 color="bg-blue-500"
               />
-              <MacroProgress
-                label="Fat"
-                value={totalFat}
-                goal={goals.fat}
-                color="bg-amber-500"
-              />
+              <MacroProgress label="Fat" value={totalFat} goal={goals.fat} color="bg-amber-500" />
             </div>
           </>
         )}
@@ -264,9 +238,7 @@ function TodayExerciseCard({
   return (
     <div
       className={`rounded-lg border transition-all ${
-        isDone
-          ? "border-primary/30 bg-primary/10"
-          : "border-border bg-surface"
+        isDone ? "border-primary/30 bg-primary/10" : "border-border bg-surface"
       }`}
     >
       <div className="flex w-full items-center gap-2 p-2.5">
@@ -286,9 +258,7 @@ function TodayExerciseCard({
           <div className="flex-1 min-w-0">
             <p
               className={`text-sm font-semibold truncate ${
-                isDone
-                  ? "text-primary line-through opacity-70"
-                  : "text-foreground"
+                isDone ? "text-primary line-through opacity-70" : "text-foreground"
               }`}
             >
               {exercise.name}
@@ -332,9 +302,7 @@ function TodayExerciseCard({
                 key={i}
                 index={i}
                 set={s}
-                onChange={(patch) =>
-                  store.updateSetLog(date, exercise, i, patch)
-                }
+                onChange={(patch) => store.updateSetLog(date, exercise, i, patch)}
               />
             ))}
           </div>
@@ -374,19 +342,15 @@ function SetRow({
         set.done ? "bg-primary/10" : ""
       }`}
     >
-      <span className="text-center text-sm font-bold text-foreground">
-        {index + 1}
-      </span>
+      <span className="text-center text-sm font-bold text-foreground">{index + 1}</span>
       <input
         type="number"
         inputMode="decimal"
         pattern="[0-9]*"
         value={set.weight || ""}
         placeholder="0"
-        onChange={(e) =>
-          onChange({ weight: parseFloat(e.target.value) || 0 })
-        }
-        className="no-spinner w-full rounded-md border border-border bg-card px-1.5 py-1.5 text-center text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
+        onChange={(e) => onChange({ weight: parseFloat(e.target.value) || 0 })}
+        className="no-spinner w-full rounded-md border border-border bg-card px-1.5 py-2.5 text-center text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
       />
       <input
         type="number"
@@ -394,15 +358,13 @@ function SetRow({
         pattern="[0-9]*"
         value={set.reps || ""}
         placeholder="0"
-        onChange={(e) =>
-          onChange({ reps: parseInt(e.target.value, 10) || 0 })
-        }
-        className="no-spinner w-full rounded-md border border-border bg-card px-1.5 py-1.5 text-center text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
+        onChange={(e) => onChange({ reps: parseInt(e.target.value, 10) || 0 })}
+        className="no-spinner w-full rounded-md border border-border bg-card px-1.5 py-2.5 text-center text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
       />
       <button
         onClick={() => onChange({ done: !set.done })}
         aria-label={set.done ? "Mark set undone" : "Mark set done"}
-        className={`flex h-7 w-7 items-center justify-center rounded-md border-2 transition-colors ${
+        className={`flex h-8 w-8 items-center justify-center rounded-md border-2 transition-colors ${
           set.done
             ? "border-primary bg-primary text-primary-foreground"
             : "border-muted-foreground/30 text-transparent hover:border-primary/60"
@@ -433,9 +395,7 @@ function MacroProgress({
       </div>
       <p className="mt-1 text-sm font-bold text-foreground">
         {value}
-        <span className="text-[10px] font-normal text-muted-foreground">
-          /{goal}g
-        </span>
+        <span className="text-[10px] font-normal text-muted-foreground">/{goal}g</span>
       </p>
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}

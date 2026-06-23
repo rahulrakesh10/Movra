@@ -7,7 +7,6 @@ export interface LibraryExercise {
 export interface ExerciseCategory {
   id: string;
   name: string;
-  emoji: string;
   exercises: LibraryExercise[];
 }
 
@@ -15,7 +14,6 @@ export const EXERCISE_LIBRARY: ExerciseCategory[] = [
   {
     id: "chest",
     name: "Chest",
-    emoji: "💪",
     exercises: [
       { name: "Bench Press", defaultSets: 4, defaultReps: "6-8" },
       { name: "Incline Bench Press", defaultSets: 4, defaultReps: "8-10" },
@@ -30,7 +28,6 @@ export const EXERCISE_LIBRARY: ExerciseCategory[] = [
   {
     id: "back",
     name: "Back",
-    emoji: "🦅",
     exercises: [
       { name: "Deadlift", defaultSets: 3, defaultReps: "5" },
       { name: "Pull-ups", defaultSets: 4, defaultReps: "6-10" },
@@ -46,7 +43,6 @@ export const EXERCISE_LIBRARY: ExerciseCategory[] = [
   {
     id: "shoulders",
     name: "Shoulders",
-    emoji: "🏋️",
     exercises: [
       { name: "Overhead Press", defaultSets: 3, defaultReps: "8-10" },
       { name: "Dumbbell Shoulder Press", defaultSets: 3, defaultReps: "10-12" },
@@ -61,7 +57,6 @@ export const EXERCISE_LIBRARY: ExerciseCategory[] = [
   {
     id: "arms",
     name: "Arms",
-    emoji: "💥",
     exercises: [
       { name: "Barbell Curl", defaultSets: 3, defaultReps: "10-12" },
       { name: "Dumbbell Curl", defaultSets: 3, defaultReps: "10-12" },
@@ -76,7 +71,6 @@ export const EXERCISE_LIBRARY: ExerciseCategory[] = [
   {
     id: "legs",
     name: "Legs",
-    emoji: "🦵",
     exercises: [
       { name: "Squat", defaultSets: 4, defaultReps: "6-8" },
       { name: "Front Squat", defaultSets: 3, defaultReps: "8-10" },
@@ -93,7 +87,6 @@ export const EXERCISE_LIBRARY: ExerciseCategory[] = [
   {
     id: "core",
     name: "Core",
-    emoji: "🔥",
     exercises: [
       { name: "Plank", defaultSets: 3, defaultReps: "60s" },
       { name: "Side Plank", defaultSets: 3, defaultReps: "45s each" },
@@ -108,7 +101,6 @@ export const EXERCISE_LIBRARY: ExerciseCategory[] = [
   {
     id: "cardio",
     name: "Cardio",
-    emoji: "🏃",
     exercises: [
       { name: "Treadmill Run", defaultSets: 1, defaultReps: "30 min" },
       { name: "Stationary Bike", defaultSets: 1, defaultReps: "30 min" },

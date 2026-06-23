@@ -7,7 +7,6 @@ import {
   X,
   ScanBarcode,
   Loader2,
-  Settings as SettingsIcon,
   Check,
   Utensils,
   Pencil,
@@ -28,11 +27,10 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 export const Route = createFileRoute("/food")({
   head: () => ({
     meta: [
-      { title: "Food — FitTrack" },
+      { title: "Food — Movra" },
       {
         name: "description",
-        content:
-          "Log meals, scan barcodes, search Open Food Facts, and track your daily macros.",
+        content: "Log meals, scan barcodes, search Open Food Facts, and track your daily macros.",
       },
     ],
   }),
@@ -87,15 +85,9 @@ function FoodContent() {
   const todayLog = store.getTodayLog();
   const goals = store.goals;
 
-  const totalCalories = Math.round(
-    todayLog.food.reduce((s, f) => s + f.calories, 0)
-  );
-  const totalProtein = Math.round(
-    todayLog.food.reduce((s, f) => s + f.protein, 0)
-  );
-  const totalCarbs = Math.round(
-    todayLog.food.reduce((s, f) => s + f.carbs, 0)
-  );
+  const totalCalories = Math.round(todayLog.food.reduce((s, f) => s + f.calories, 0));
+  const totalProtein = Math.round(todayLog.food.reduce((s, f) => s + f.protein, 0));
+  const totalCarbs = Math.round(todayLog.food.reduce((s, f) => s + f.carbs, 0));
   const totalFat = Math.round(todayLog.food.reduce((s, f) => s + f.fat, 0));
 
   const [showAdd, setShowAdd] = useState(false);
@@ -106,9 +98,7 @@ function FoodContent() {
   >(null);
   const [logTarget, setLogTarget] = useState<Meal | null>(null);
 
-  const meals = store.mealOrder
-    .map((id) => store.meals[id])
-    .filter(Boolean) as Meal[];
+  const meals = store.mealOrder.map((id) => store.meals[id]).filter(Boolean) as Meal[];
 
   const foodByMeal = MEAL_TYPES.map((meal) => ({
     meal,
@@ -116,25 +106,19 @@ function FoodContent() {
   }));
 
   return (
-    <div className="flex min-h-screen flex-col gap-3 p-3">
+    <div className="flex min-h-screen flex-col gap-4 p-4">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Food Log</h1>
-          <p className="text-xs text-muted-foreground">
+          <h1 className="text-3xl font-bold text-foreground">Food Log</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
               month: "short",
               day: "numeric",
             })}
           </p>
         </div>
-        <button
-          onClick={() => setShowGoals(true)}
-          className="rounded-full bg-card p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="Edit goals"
-        >
-          <SettingsIcon className="h-3.5 w-3.5" />
-        </button>
       </div>
 
       {/* Goals Summary */}
@@ -161,9 +145,7 @@ function FoodContent() {
             style={{
               width: `${Math.min(
                 100,
-                goals.calories > 0
-                  ? (totalCalories / goals.calories) * 100
-                  : 0
+                goals.calories > 0 ? (totalCalories / goals.calories) * 100 : 0,
               )}%`,
             }}
           />
@@ -175,18 +157,8 @@ function FoodContent() {
             goal={goals.protein}
             color="bg-primary"
           />
-          <MacroProgress
-            label="Carbs"
-            value={totalCarbs}
-            goal={goals.carbs}
-            color="bg-blue-500"
-          />
-          <MacroProgress
-            label="Fat"
-            value={totalFat}
-            goal={goals.fat}
-            color="bg-amber-500"
-          />
+          <MacroProgress label="Carbs" value={totalCarbs} goal={goals.carbs} color="bg-blue-500" />
+          <MacroProgress label="Fat" value={totalFat} goal={goals.fat} color="bg-amber-500" />
         </div>
       </div>
 
@@ -233,24 +205,15 @@ function FoodContent() {
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {meals.map((m) => {
-              const cals = Math.round(
-                m.items.reduce((s, i) => s + i.calories, 0)
-              );
-              const prot = Math.round(
-                m.items.reduce((s, i) => s + i.protein, 0)
-              );
+              const cals = Math.round(m.items.reduce((s, i) => s + i.calories, 0));
+              const prot = Math.round(m.items.reduce((s, i) => s + i.protein, 0));
               return (
-                <div
-                  key={m.id}
-                  className="relative rounded-xl bg-card p-2.5"
-                >
+                <div key={m.id} className="relative rounded-xl bg-card p-2.5">
                   <button
                     onClick={() => setLogTarget(m)}
                     className="flex w-full flex-col items-start text-left"
                   >
-                    <p className="truncate text-xs font-bold text-foreground">
-                      {m.name}
-                    </p>
+                    <p className="truncate text-xs font-bold text-foreground">{m.name}</p>
                     <p className="text-[10px] text-muted-foreground">
                       {cals} kcal · P{prot}g · {m.items.length} item
                       {m.items.length === 1 ? "" : "s"}
@@ -277,18 +240,14 @@ function FoodContent() {
       <div className="flex flex-col gap-2">
         {foodByMeal.map(({ meal, items }) => {
           if (items.length === 0) return null;
-          const mealCals = Math.round(
-            items.reduce((s, f) => s + f.calories, 0)
-          );
+          const mealCals = Math.round(items.reduce((s, f) => s + f.calories, 0));
           return (
             <div key={meal}>
               <div className="mb-1 flex items-baseline justify-between">
                 <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   {MEAL_LABELS[meal]}
                 </h3>
-                <span className="text-[10px] text-muted-foreground">
-                  {mealCals} kcal
-                </span>
+                <span className="text-[10px] text-muted-foreground">{mealCals} kcal</span>
               </div>
               <div className="flex flex-col gap-1">
                 {items.map((food) => (
@@ -297,9 +256,7 @@ function FoodContent() {
                     className="flex items-center justify-between rounded-lg bg-card px-3 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs text-foreground">
-                        {food.name}
-                      </p>
+                      <p className="truncate text-xs text-foreground">{food.name}</p>
                       <p className="text-[10px] text-muted-foreground">
                         P:{food.protein}g · C:{food.carbs}g · F:{food.fat}g
                       </p>
@@ -325,9 +282,7 @@ function FoodContent() {
         {todayLog.food.length === 0 && !showAdd && (
           <div className="rounded-xl border border-dashed border-border py-6 text-center">
             <p className="text-xs text-muted-foreground">No food logged today</p>
-            <p className="text-[10px] text-muted-foreground/60">
-              Tap "Log Food" to get started
-            </p>
+            <p className="text-[10px] text-muted-foreground/60">Tap "Log Food" to get started</p>
           </div>
         )}
       </div>
@@ -399,9 +354,7 @@ function MacroProgress({
       </div>
       <p className="mt-1 text-sm font-bold text-foreground">
         {value}
-        <span className="text-[10px] font-normal text-muted-foreground">
-          /{goal}g
-        </span>
+        <span className="text-[10px] font-normal text-muted-foreground">/{goal}g</span>
       </p>
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
@@ -438,7 +391,7 @@ function AddFoodPanel({
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredCommon = COMMON_FOODS.filter((f) =>
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Debounced live search against Open Food Facts
@@ -479,9 +432,7 @@ function AddFoodPanel({
             ? `${product.brand} — ${product.name}${
                 product.servingLabel ? ` (${product.servingLabel})` : ""
               }`
-            : `${product.name}${
-                product.servingLabel ? ` (${product.servingLabel})` : ""
-              }`,
+            : `${product.name}${product.servingLabel ? ` (${product.servingLabel})` : ""}`,
           calories: product.calories,
           protein: product.protein,
           carbs: product.carbs,
@@ -514,7 +465,7 @@ function AddFoodPanel({
             <button
               key={meal}
               onClick={() => onSelectMeal(meal)}
-              className={`flex-1 rounded-lg py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              className={`flex-1 rounded-lg py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                 selectedMeal === meal
                   ? "bg-primary text-primary-foreground"
                   : "bg-surface text-muted-foreground hover:text-foreground"
@@ -558,7 +509,7 @@ function AddFoodPanel({
         )}
 
         {/* Results */}
-        <div className="flex max-h-72 flex-col gap-1 overflow-y-auto no-scrollbar">
+        <div className="flex max-h-[50vh] flex-col gap-1 overflow-y-auto no-scrollbar">
           {searching && (
             <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -581,23 +532,17 @@ function AddFoodPanel({
             ))}
 
           {/* OFF search results */}
-          {searchQuery.trim().length >= 3 &&
-            !searching &&
-            results.length === 0 && (
-              <p className="py-3 text-center text-xs text-muted-foreground">
-                No results from Open Food Facts. Try a custom entry below.
-              </p>
-            )}
+          {searchQuery.trim().length >= 3 && !searching && results.length === 0 && (
+            <p className="py-3 text-center text-xs text-muted-foreground">
+              No results from Open Food Facts. Try a custom entry below.
+            </p>
+          )}
 
           {searchQuery.trim().length >= 3 &&
             results.map((r, i) => (
               <FoodRow
                 key={`${r.barcode || r.name}-${i}`}
-                name={
-                  r.brand
-                    ? `${r.brand} — ${r.name}`
-                    : r.name
-                }
+                name={r.brand ? `${r.brand} — ${r.name}` : r.name}
                 subtitle={r.servingLabel}
                 calories={r.calories}
                 protein={r.protein}
@@ -639,10 +584,7 @@ function AddFoodPanel({
       </div>
 
       {showScanner && (
-        <BarcodeScanner
-          onDetected={handleBarcode}
-          onClose={() => setShowScanner(false)}
-        />
+        <BarcodeScanner onDetected={handleBarcode} onClose={() => setShowScanner(false)} />
       )}
     </>
   );
@@ -676,9 +618,7 @@ function FoodRow({
           {subtitle ? `${subtitle} · ` : ""}P:{protein}g · C:{carbs}g · F:{fat}g
         </p>
       </div>
-      <span className="shrink-0 text-sm font-bold text-primary">
-        {calories}
-      </span>
+      <span className="shrink-0 text-sm font-bold text-primary">{calories}</span>
     </button>
   );
 }
@@ -788,11 +728,12 @@ function GoalsDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-card p-5"
+        className="sheet-animate w-full max-w-lg rounded-t-2xl bg-card p-5 sm:rounded-2xl"
+        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -869,11 +810,12 @@ function MealTypePicker({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-card p-5"
+        className="sheet-animate w-full max-w-lg rounded-t-2xl bg-card p-5 sm:rounded-2xl"
+        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
@@ -931,16 +873,17 @@ function MealEditorDialog({
       carbs: acc.carbs + it.carbs,
       fat: acc.fat + it.fat,
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
   );
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-card p-4"
+        className="sheet-animate flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl bg-card p-4 sm:rounded-2xl"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
@@ -968,9 +911,8 @@ function MealEditorDialog({
             Items ({items.length})
           </p>
           <p className="text-[10px] text-muted-foreground">
-            {Math.round(totals.calories)} kcal · P
-            {Math.round(totals.protein)}g · C{Math.round(totals.carbs)}g · F
-            {Math.round(totals.fat)}g
+            {Math.round(totals.calories)} kcal · P{Math.round(totals.protein)}g · C
+            {Math.round(totals.carbs)}g · F{Math.round(totals.fat)}g
           </p>
         </div>
 
@@ -992,13 +934,9 @@ function MealEditorDialog({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-foreground">
-                  {Math.round(it.calories)}
-                </span>
+                <span className="text-xs font-bold text-foreground">{Math.round(it.calories)}</span>
                 <button
-                  onClick={() =>
-                    setItems(items.filter((_, idx) => idx !== i))
-                  }
+                  onClick={() => setItems(items.filter((_, idx) => idx !== i))}
                   className="rounded p-1 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3 w-3" />

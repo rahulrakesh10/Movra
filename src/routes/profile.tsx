@@ -1,13 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { User, RotateCcw, Sun, Moon, Monitor } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { RotateCcw, Sun, Moon, Monitor } from "lucide-react";
 import { useState } from "react";
-import { useFitnessStore, type WeightUnit, type Goals, type ThemePreference } from "@/store/fitnessStore";
+import {
+  useFitnessStore,
+  type WeightUnit,
+  type Goals,
+  type ThemePreference,
+} from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Profile — FitTrack" },
+      { title: "Profile — Movra" },
       { name: "description", content: "Manage your units and preferences." },
     ],
   }),
@@ -16,6 +21,7 @@ export const Route = createFileRoute("/profile")({
 
 function ProfilePage() {
   const hydrated = useHydrated();
+  const navigate = useNavigate();
   const weightUnit = useFitnessStore((s) => s.weightUnit);
   const setWeightUnit = useFitnessStore((s) => s.setWeightUnit);
   const theme = useFitnessStore((s) => s.theme);
@@ -41,15 +47,10 @@ function ProfilePage() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col gap-4 p-3">
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <User className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Profile</h1>
-          <p className="text-xs text-muted-foreground">Settings & preferences</p>
-        </div>
+    <div className="flex min-h-screen flex-col gap-4 p-4">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Profile</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Settings & preferences</p>
       </div>
 
       <section>
@@ -133,6 +134,7 @@ function ProfilePage() {
         onClick={() => {
           if (confirm("Redo onboarding? Your routine and logs stay.")) {
             resetOnboarding();
+            navigate({ to: "/" });
           }
         }}
         className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
@@ -153,13 +155,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function GoalsEditor({
-  goals,
-  onSave,
-}: {
-  goals: Goals;
-  onSave: (g: Partial<Goals>) => void;
-}) {
+function GoalsEditor({ goals, onSave }: { goals: Goals; onSave: (g: Partial<Goals>) => void }) {
   const [draft, setDraft] = useState(goals);
   const dirty =
     draft.calories !== goals.calories ||

@@ -7,6 +7,7 @@ export interface Exercise {
   sets: number;
   reps: string;
   weights?: number[];
+  supersetId?: string;
 }
 
 export interface WorkoutTemplate {
@@ -98,26 +99,27 @@ export interface FitnessState {
   updateExerciseInTemplate: (
     templateId: string,
     exerciseId: string,
-    patch: Partial<Omit<Exercise, "id">>
+    patch: Partial<Omit<Exercise, "id">>,
   ) => void;
   removeExerciseFromTemplate: (templateId: string, exerciseId: string) => void;
   replaceExerciseInTemplate: (
     templateId: string,
     exerciseId: string,
-    exercise: Omit<Exercise, "id">
+    exercise: Omit<Exercise, "id">,
   ) => void;
+  addSupersetToExercise: (
+    templateId: string,
+    afterExerciseId: string,
+    exercise: Omit<Exercise, "id">,
+  ) => void;
+  unlinkSuperset: (templateId: string, exerciseId: string) => void;
   assignTemplateToDay: (day: string, templateId: string | null) => void;
   getTodayTemplate: () => WorkoutTemplate | null;
   getTemplateForDay: (day: string) => WorkoutTemplate | null;
 
   toggleExerciseComplete: (date: string, exerciseId: string) => void;
   getSetLogs: (date: string, exercise: Exercise) => SetLog[];
-  updateSetLog: (
-    date: string,
-    exercise: Exercise,
-    index: number,
-    patch: Partial<SetLog>
-  ) => void;
+  updateSetLog: (date: string, exercise: Exercise, index: number, patch: Partial<SetLog>) => void;
   addFood: (date: string, entry: Omit<FoodEntry, "id">) => void;
   removeFood: (date: string, entryId: string) => void;
   getDayLog: (date: string) => DayLog;
@@ -132,11 +134,7 @@ export interface FitnessState {
   createMeal: (name: string, items: MealItem[]) => string;
   updateMeal: (mealId: string, patch: Partial<Omit<Meal, "id">>) => void;
   deleteMeal: (mealId: string) => void;
-  logMeal: (
-    date: string,
-    mealId: string,
-    mealType: FoodEntry["mealType"]
-  ) => void;
+  logMeal: (date: string, mealId: string, mealType: FoodEntry["mealType"]) => void;
 }
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -242,11 +240,14 @@ const SPLITS: Record<number, (string | null)[]> = {
 };
 
 // Goal-tuned set/rep scheme.
-const SCHEMES: Record<LiftingGoal, { sets: number; reps: string; bigSets: number; bigReps: string }> = {
-  strength:    { sets: 5, reps: "5",     bigSets: 5, bigReps: "5" },
-  hypertrophy: { sets: 4, reps: "8-12",  bigSets: 4, bigReps: "6-8" },
-  endurance:   { sets: 3, reps: "15-20", bigSets: 3, bigReps: "12-15" },
-  general:     { sets: 3, reps: "10",    bigSets: 3, bigReps: "8-10" },
+const SCHEMES: Record<
+  LiftingGoal,
+  { sets: number; reps: string; bigSets: number; bigReps: string }
+> = {
+  strength: { sets: 5, reps: "5", bigSets: 5, bigReps: "5" },
+  hypertrophy: { sets: 4, reps: "8-12", bigSets: 4, bigReps: "6-8" },
+  endurance: { sets: 3, reps: "15-20", bigSets: 3, bigReps: "12-15" },
+  general: { sets: 3, reps: "10", bigSets: 3, bigReps: "8-10" },
 };
 
 // Base exercise lists per template kind. `big` = primary compound.
@@ -315,16 +316,13 @@ const BASE: Record<string, { name: string; exercises: BaseEx[] }> = {
   },
   cardio: {
     name: "Cardio",
-    exercises: [
-      { name: "Run / Bike" },
-      { name: "Plank" },
-    ],
+    exercises: [{ name: "Run / Bike" }, { name: "Plank" }],
   },
 };
 
 export function buildPlanFromProfile(
   daysPerWeek: number,
-  liftingGoal: LiftingGoal
+  liftingGoal: LiftingGoal,
 ): {
   templates: Record<string, WorkoutTemplate>;
   templateOrder: string[];
@@ -404,7 +402,7 @@ function computeStreak(logs: Record<string, DayLog>): number {
 function findLastSetLogs(
   logs: Record<string, DayLog>,
   exerciseId: string,
-  beforeDate: string
+  beforeDate: string,
 ): SetLog[] | null {
   const dates = Object.keys(logs)
     .filter((d) => d < beforeDate && logs[d]?.setLogs?.[exerciseId])
@@ -511,9 +509,57 @@ export const useFitnessStore = create<FitnessState>()(
               [templateId]: {
                 ...tpl,
                 exercises: tpl.exercises.map((e) =>
-                  e.id === exerciseId ? { ...exercise, id: newId } : e
+                  e.id === exerciseId ? { ...exercise, id: newId } : e,
                 ),
               },
+            },
+          };
+        }),
+
+      addSupersetToExercise: (templateId, afterExerciseId, exercise) =>
+        set((state) => {
+          const tpl = state.templates[templateId];
+          if (!tpl) return state;
+          const idx = tpl.exercises.findIndex((e) => e.id === afterExerciseId);
+          if (idx === -1) return state;
+          const anchor = tpl.exercises[idx];
+          const supersetId = anchor.supersetId || uid("ss");
+          const newEx: Exercise = { ...exercise, id: uid("ex"), supersetId };
+          const exercises = [...tpl.exercises];
+          if (!anchor.supersetId) {
+            exercises[idx] = { ...anchor, supersetId };
+          }
+          exercises.splice(idx + 1, 0, newEx);
+          return {
+            templates: {
+              ...state.templates,
+              [templateId]: { ...tpl, exercises },
+            },
+          };
+        }),
+
+      unlinkSuperset: (templateId, exerciseId) =>
+        set((state) => {
+          const tpl = state.templates[templateId];
+          if (!tpl) return state;
+          const target = tpl.exercises.find((e) => e.id === exerciseId);
+          if (!target || !target.supersetId) return state;
+          const ssId = target.supersetId;
+          // Remove supersetId from this exercise
+          let exercises = tpl.exercises.map((e) =>
+            e.id === exerciseId ? { ...e, supersetId: undefined } : e,
+          );
+          // If only one exercise remains in the group, clear its supersetId too
+          const remaining = exercises.filter((e) => e.supersetId === ssId);
+          if (remaining.length === 1) {
+            exercises = exercises.map((e) =>
+              e.supersetId === ssId ? { ...e, supersetId: undefined } : e,
+            );
+          }
+          return {
+            templates: {
+              ...state.templates,
+              [templateId]: { ...tpl, exercises },
             },
           };
         }),
@@ -534,7 +580,7 @@ export const useFitnessStore = create<FitnessState>()(
                   if (typeof merged.sets === "number") {
                     const cur = merged.weights || e.weights || [];
                     const next = Array.from({ length: merged.sets }, (_, i) =>
-                      typeof cur[i] === "number" ? cur[i] : 0
+                      typeof cur[i] === "number" ? cur[i] : 0,
                     );
                     merged.weights = next;
                   }
@@ -618,9 +664,7 @@ export const useFitnessStore = create<FitnessState>()(
           if (allDone && !wasCompleted) {
             exercisesCompleted = [...exercisesCompleted, exercise.id];
           } else if (!allDone && wasCompleted) {
-            exercisesCompleted = exercisesCompleted.filter(
-              (id) => id !== exercise.id
-            );
+            exercisesCompleted = exercisesCompleted.filter((id) => id !== exercise.id);
           }
 
           const newLogs = {
@@ -707,7 +751,7 @@ export const useFitnessStore = create<FitnessState>()(
           const goals = computeGoalsFromProfile(profile);
           const { templates, templateOrder, weekPlan } = buildPlanFromProfile(
             profile.daysPerWeek,
-            profile.liftingGoal
+            profile.liftingGoal,
           );
           return {
             profile,
@@ -768,7 +812,7 @@ export const useFitnessStore = create<FitnessState>()(
               carbs: acc.carbs + it.carbs,
               fat: acc.fat + it.fat,
             }),
-            { calories: 0, protein: 0, carbs: 0, fat: 0 }
+            { calories: 0, protein: 0, carbs: 0, fat: 0 },
           );
           const newEntry: FoodEntry = {
             id: uid("food"),
@@ -847,10 +891,9 @@ export const useFitnessStore = create<FitnessState>()(
         }
         return persisted;
       },
-    }
-  )
+    },
+  ),
 );
-
 
 export const DAY_LABELS: Record<string, string> = {
   mon: "Monday",

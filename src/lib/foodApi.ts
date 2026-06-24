@@ -14,7 +14,17 @@ function round(n: number, p = 1) {
   return Math.round(n * f) / f;
 }
 
-function fromOFFProduct(p: any): FoodResult | null {
+interface OFFProduct {
+  nutriments?: Record<string, number | undefined>;
+  product_name?: string;
+  product_name_en?: string;
+  generic_name?: string;
+  brands?: string;
+  serving_size?: string;
+  code?: string;
+}
+
+function fromOFFProduct(p: OFFProduct): FoodResult | null {
   if (!p) return null;
   const n = p.nutriments || {};
   // Prefer per-serving when available, fallback to per-100g
@@ -63,7 +73,7 @@ export async function searchFoods(query: string, limit = 15): Promise<FoodResult
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
-  const products: any[] = data.products || [];
+  const products: OFFProduct[] = data.products || [];
   return products
     .map(fromOFFProduct)
     .filter((p): p is FoodResult => !!p && (p.calories > 0 || p.protein > 0));

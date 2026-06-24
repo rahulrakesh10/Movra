@@ -834,8 +834,10 @@ export const useFitnessStore = create<FitnessState>()(
     {
       name: "fitness-tracker-storage",
       version: 6,
-      migrate: (persisted: any, version) => {
-        if (!persisted) return persisted;
+      migrate: (persistedState: unknown, version: number) => {
+        if (!persistedState) return persistedState;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const persisted = persistedState as any;
         if (version < 2) {
           // Upgrade from v1 (routine: Record<day, Exercise[]>) to templates+weekPlan
           const oldRoutine = persisted.routine || {};

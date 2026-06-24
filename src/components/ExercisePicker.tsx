@@ -18,6 +18,7 @@ import {
   type ExerciseCategory,
   type LibraryExercise,
 } from "@/lib/exerciseLibrary";
+import { useFitnessStore } from "@/store/fitnessStore";
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   chest: Dumbbell,
@@ -43,13 +44,19 @@ export function ExercisePickerModal({
   const [category, setCategory] = useState<ExerciseCategory | null>(null);
   const [query, setQuery] = useState("");
   const [customName, setCustomName] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(EXERCISE_LIBRARY[0].id);
+
+  const store = useFitnessStore();
+  const customExercises = store.customExercises || {};
+  const categoryCustom = category ? customExercises[category.id] || [] : [];
+  const allCategoryExercises = category ? [...category.exercises, ...categoryCustom] : [];
 
   const filtered = category
-    ? category.exercises.filter((e) => e.name.toLowerCase().includes(query.toLowerCase()))
+    ? allCategoryExercises.filter((e) => e.name.toLowerCase().includes(query.toLowerCase()))
     : [];
 
   const hasExactMatch = category
-    ? category.exercises.some((e) => e.name.toLowerCase() === query.trim().toLowerCase())
+    ? allCategoryExercises.some((e) => e.name.toLowerCase() === query.trim().toLowerCase())
     : false;
 
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : null;
@@ -122,22 +129,37 @@ export function ExercisePickerModal({
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (customName.trim()) {
-                    onPick({ name: customName.trim(), defaultSets: 3, defaultReps: "10" });
+                    const newEx = { name: customName.trim(), defaultSets: 3, defaultReps: "10" };
+                    store.addCustomExercise(selectedCategoryId, newEx);
+                    onPick(newEx);
                   }
                 }}
-                className="flex gap-2"
+                className="flex flex-col gap-2 sm:flex-row"
               >
-                <input
-                  type="text"
-                  placeholder="e.g. Kettlebell Swing"
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                />
+                <div className="flex flex-1 gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. Kettlebell Swing"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                  />
+                  <select
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    className="rounded-lg border border-border bg-surface px-2 py-2 text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
+                  >
+                    {EXERCISE_LIBRARY.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   type="submit"
                   disabled={!customName.trim()}
-                  className="flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+                  className="flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
                 >
                   <Plus className="h-4 w-4 shrink-0" />
                   Create
@@ -163,7 +185,11 @@ export function ExercisePickerModal({
             <div className="flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto p-2.5">
               {!hasExactMatch && query.trim().length > 0 && (
                 <button
-                  onClick={() => onPick({ name: query.trim(), defaultSets: 3, defaultReps: "10" })}
+                  onClick={() => {
+                    const newEx = { name: query.trim(), defaultSets: 3, defaultReps: "10" };
+                    store.addCustomExercise(category.id, newEx);
+                    onPick(newEx);
+                  }}
                   className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-left hover:bg-primary/10 transition-colors"
                 >
                   <div className="min-w-0 flex-1">

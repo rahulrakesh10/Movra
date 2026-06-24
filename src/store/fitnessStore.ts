@@ -77,6 +77,12 @@ export interface Profile {
   liftingGoal: LiftingGoal;
 }
 
+export interface StoreLibraryExercise {
+  name: string;
+  defaultSets: number;
+  defaultReps: string;
+}
+
 export interface FitnessState {
   templates: Record<string, WorkoutTemplate>;
   templateOrder: string[];
@@ -91,6 +97,7 @@ export interface FitnessState {
   theme: ThemePreference;
   meals: Record<string, Meal>;
   mealOrder: string[];
+  customExercises: Record<string, StoreLibraryExercise[]>;
 
   createTemplate: (name: string) => string;
   renameTemplate: (templateId: string, name: string) => void;
@@ -135,6 +142,7 @@ export interface FitnessState {
   updateMeal: (mealId: string, patch: Partial<Omit<Meal, "id">>) => void;
   deleteMeal: (mealId: string) => void;
   logMeal: (date: string, mealId: string, mealType: FoodEntry["mealType"]) => void;
+  addCustomExercise: (categoryId: string, exercise: StoreLibraryExercise) => void;
 }
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -431,6 +439,7 @@ export const useFitnessStore = create<FitnessState>()(
       theme: "system",
       meals: {},
       mealOrder: [],
+      customExercises: {},
 
       createTemplate: (name) => {
         const id = uid("tpl");
@@ -830,10 +839,24 @@ export const useFitnessStore = create<FitnessState>()(
             },
           };
         }),
+
+      addCustomExercise: (categoryId, exercise) =>
+        set((state) => {
+          const list = state.customExercises[categoryId] || [];
+          if (list.some((ex) => ex.name.toLowerCase() === exercise.name.toLowerCase())) {
+            return state;
+          }
+          return {
+            customExercises: {
+              ...state.customExercises,
+              [categoryId]: [...list, exercise],
+            },
+          };
+        }),
     }),
     {
       name: "fitness-tracker-storage",
-      version: 6,
+      version: 7,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState) return persistedState;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -889,6 +912,12 @@ export const useFitnessStore = create<FitnessState>()(
             ...persisted,
             meals: persisted.meals ?? {},
             mealOrder: persisted.mealOrder ?? [],
+          };
+        }
+        if (version < 7) {
+          return {
+            ...persisted,
+            customExercises: persisted.customExercises ?? {},
           };
         }
         return persisted;

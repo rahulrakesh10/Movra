@@ -369,8 +369,8 @@ function ExerciseRow({
 
       {open && (
         <div className="flex flex-col gap-2 border-t border-border px-2.5 py-2.5">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-1 items-center justify-between gap-2">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
               <span className="text-[11px] font-medium text-muted-foreground">Sets</span>
               <div className="flex items-center gap-1.5">
                 <button
@@ -392,7 +392,7 @@ function ExerciseRow({
                 </button>
               </div>
             </div>
-            <div className="flex flex-1 items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <span className="text-[11px] font-medium text-muted-foreground">Reps</span>
               <input
                 value={exercise.reps}

@@ -47,6 +47,10 @@ export function ExercisePickerModal({
     ? category.exercises.filter((e) => e.name.toLowerCase().includes(query.toLowerCase()))
     : [];
 
+  const hasExactMatch = category
+    ? category.exercises.some((e) => e.name.toLowerCase() === query.trim().toLowerCase())
+    : false;
+
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : null;
 
   return (
@@ -124,8 +128,26 @@ export function ExercisePickerModal({
               </div>
             </div>
             <div className="flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto p-2.5">
+              {!hasExactMatch && query.trim().length > 0 && (
+                <button
+                  onClick={() => onPick({ name: query.trim(), defaultSets: 3, defaultReps: "10" })}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-left hover:bg-primary/10 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-primary">Create custom exercise</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      "{query.trim()}" (3 sets × 10 reps)
+                    </p>
+                  </div>
+                  <Plus className="h-4 w-4 text-primary shrink-0" />
+                </button>
+              )}
               {filtered.length === 0 && (
-                <p className="py-4 text-center text-xs text-muted-foreground">No matches</p>
+                <p className="py-4 text-center text-xs text-muted-foreground">
+                  {query.trim().length > 0
+                    ? "No exact match found. You can add it as a custom exercise above!"
+                    : "No exercises found."}
+                </p>
               )}
               {filtered.map((ex) => {
                 const added = existingNames.includes(ex.name.toLowerCase());

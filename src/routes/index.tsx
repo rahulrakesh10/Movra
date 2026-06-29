@@ -513,6 +513,53 @@ function TodayExerciseCard({
               );
             })}
           </div>
+
+          {/* ── Weight tracking nudge ── */}
+          {(() => {
+            const allCurrentZero = setLogs.every((s) => s.weight === 0);
+            const lastAllZero = lastSession && lastSession.every((s) => s.weight === 0);
+            const noHistory = !lastSession;
+
+            if (allCurrentZero && isDone) {
+              // User completed sets without weight — strong nudge
+              return (
+                <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-500/10 px-2.5 py-2">
+                  <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                  <p className="text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-amber-500">
+                      Add weight to track progress!
+                    </span>{" "}
+                    Logging your weight unlocks overload suggestions and personal records.
+                  </p>
+                </div>
+              );
+            }
+            if (allCurrentZero && !isDone && lastAllZero) {
+              // Repeat zero-weight sessions — gentle reminder
+              return (
+                <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-500/5 px-2.5 py-1.5">
+                  <TrendingUp className="mt-0.5 h-3 w-3 shrink-0 text-amber-500/70" />
+                  <p className="text-[10px] text-muted-foreground">
+                    You logged 0{unit} last time too — try adding your working weight to see
+                    progress over time.
+                  </p>
+                </div>
+              );
+            }
+            if (allCurrentZero && !isDone && noHistory) {
+              // First time — soft hint
+              return (
+                <div className="mt-2 flex items-start gap-2 rounded-md bg-surface px-2.5 py-1.5">
+                  <TrendingUp className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <p className="text-[10px] text-muted-foreground">
+                    <span className="font-medium text-foreground/70">Tip:</span> Enter your weight
+                    to track progress and get smart recommendations next session.
+                  </p>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       )}
 

@@ -10,6 +10,7 @@ import {
   HeartPulse,
   Plus,
   Search,
+  Sparkles,
   Target,
   X,
 } from "lucide-react";
@@ -33,11 +34,13 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
 export function ExercisePickerModal({
   existingNames = [],
   title,
+  currentExerciseName,
   onPick,
   onClose,
 }: {
   existingNames?: string[];
   title?: string;
+  currentExerciseName?: string;
   onPick: (ex: LibraryExercise) => void;
   onClose: () => void;
 }) {
@@ -60,6 +63,20 @@ export function ExercisePickerModal({
     : false;
 
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : null;
+
+  // ── Smart swap: find alternatives from the same category ──
+  const smartAlternatives: LibraryExercise[] = [];
+  if (currentExerciseName && !category) {
+    const lowerCurrent = currentExerciseName.toLowerCase();
+    for (const cat of EXERCISE_LIBRARY) {
+      const match = cat.exercises.some((e) => e.name.toLowerCase() === lowerCurrent);
+      if (match) {
+        const alts = cat.exercises.filter((e) => e.name.toLowerCase() !== lowerCurrent).slice(0, 4);
+        smartAlternatives.push(...alts);
+        break;
+      }
+    }
+  }
 
   return (
     <div
@@ -99,27 +116,62 @@ export function ExercisePickerModal({
 
         {!category ? (
           <>
-            <div className="grid flex-1 min-h-0 grid-cols-2 gap-2 overflow-y-auto p-3">
-              {EXERCISE_LIBRARY.map((cat) => {
-                const Icon = CATEGORY_ICONS[cat.id];
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setCategory(cat)}
-                    className="flex flex-col items-start gap-2 rounded-xl bg-surface p-3 text-left transition-colors hover:bg-primary/10"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      {Icon && <Icon className="h-4 w-4" />}
-                    </div>
-                    <div className="flex flex-col items-start gap-0.5">
-                      <span className="text-sm font-bold text-foreground">{cat.name}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {cat.exercises.length} exercises
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto p-3">
+              {/* ── Smart Swap Suggestions ── */}
+              {smartAlternatives.length > 0 && (
+                <div className="mb-1">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                    <Sparkles className="h-3 w-3" />
+                    Suggested alternatives
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {smartAlternatives.map((ex) => (
+                      <button
+                        key={ex.name}
+                        onClick={() => onPick(ex)}
+                        className="flex items-center justify-between gap-2 rounded-lg bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{ex.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {ex.defaultSets} × {ex.defaultReps}
+                          </p>
+                        </div>
+                        <Plus className="h-3.5 w-3.5 text-primary" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Browse by Category ── */}
+              {smartAlternatives.length > 0 && (
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Or browse all categories
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {EXERCISE_LIBRARY.map((cat) => {
+                  const Icon = CATEGORY_ICONS[cat.id];
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setCategory(cat)}
+                      className="flex flex-col items-start gap-2 rounded-xl bg-surface p-3 text-left transition-colors hover:bg-primary/10"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        {Icon && <Icon className="h-4 w-4" />}
+                      </div>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className="text-sm font-bold text-foreground">{cat.name}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {cat.exercises.length} exercises
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="border-t border-border p-3 bg-card rounded-b-2xl">
               <p className="mb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">

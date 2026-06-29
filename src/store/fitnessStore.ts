@@ -50,6 +50,7 @@ export interface SetLog {
   done: boolean;
   weight: number;
   reps: number;
+  exerciseName?: string;
 }
 
 export interface Goals {
@@ -143,6 +144,7 @@ export interface FitnessState {
   deleteMeal: (mealId: string) => void;
   logMeal: (date: string, mealId: string, mealType: FoodEntry["mealType"]) => void;
   addCustomExercise: (categoryId: string, exercise: StoreLibraryExercise) => void;
+  getAdjustedGoals: (date: string) => Goals;
 }
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -646,6 +648,7 @@ export const useFitnessStore = create<FitnessState>()(
             done: s?.done ?? false,
             weight: s?.weight ?? p?.weight ?? exercise.weights?.[i] ?? 0,
             reps: s?.reps ?? p?.reps ?? defaultReps,
+            exerciseName: exercise.name,
           };
         });
       },
@@ -663,9 +666,10 @@ export const useFitnessStore = create<FitnessState>()(
               done: s?.done ?? false,
               weight: s?.weight ?? p?.weight ?? exercise.weights?.[i] ?? 0,
               reps: s?.reps ?? p?.reps ?? defaultReps,
+              exerciseName: exercise.name,
             };
           });
-          arr[index] = { ...arr[index], ...patch };
+          arr[index] = { ...arr[index], ...patch, exerciseName: exercise.name };
 
           const allDone = arr.every((s) => s.done);
           const wasCompleted = log.exercisesCompleted.includes(exercise.id);
@@ -853,6 +857,30 @@ export const useFitnessStore = create<FitnessState>()(
             },
           };
         }),
+
+      getAdjustedGoals: (date) => {
+        const state = get();
+        const goals = state.goals;
+        // Figure out the day name from the date
+        const d = new Date(date + "T12:00:00");
+        const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+        const dayName = dayNames[d.getDay()];
+        const templateId = state.weekPlan[dayName];
+        const isRestDay = !templateId;
+
+        if (isRestDay) {
+          // Rest day: reduce calories by 200, cut carbs, keep protein
+          const reducedCalories = Math.max(1200, goals.calories - 200);
+          const reducedCarbs = Math.max(0, goals.carbs - 50);
+          return {
+            calories: reducedCalories,
+            protein: goals.protein,
+            carbs: reducedCarbs,
+            fat: goals.fat,
+          };
+        }
+        return goals;
+      },
     }),
     {
       name: "fitness-tracker-storage",

@@ -1,7 +1,38 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Flame, Trophy, TrendingUp, CalendarDays, UtensilsCrossed, Dumbbell } from "lucide-react";
+import {
+  Flame,
+  Trophy,
+  TrendingUp,
+  CalendarDays,
+  UtensilsCrossed,
+  Dumbbell,
+  AlertTriangle,
+  Award,
+  BarChart3,
+  Scale,
+} from "lucide-react";
 import { useFitnessStore, getTodayISO } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
+import {
+  computeVolumeTrend,
+  computePersonalRecords,
+  computeMuscleGroupBalance,
+  detectImbalances,
+} from "@/lib/analytics";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  Cell,
+  ReferenceLine,
+} from "recharts";
+import { useMemo } from "react";
 
 export const Route = createFileRoute("/progress")({
   head: () => ({
@@ -34,6 +65,27 @@ function ProgressContent() {
   const todayCalories = Math.round(todayLog.food.reduce((s, f) => s + f.calories, 0));
   const todayProtein = Math.round(todayLog.food.reduce((s, f) => s + f.protein, 0));
   const calPct = goals.calories > 0 ? Math.min(100, (todayCalories / goals.calories) * 100) : 0;
+
+  // ----- Analytics data -----
+  const volumeTrend = useMemo(() => computeVolumeTrend(store.logs, 6), [store.logs]);
+  const personalRecords = useMemo(() => computePersonalRecords(store.logs), [store.logs]);
+  const muscleBalance = useMemo(() => computeMuscleGroupBalance(store.logs, 1), [store.logs]);
+  const imbalanceWarnings = useMemo(() => detectImbalances(muscleBalance), [muscleBalance]);
+
+  // ----- Body weight data -----
+  const weightUnit = store.weightUnit;
+  const bodyWeightData = useMemo(() => {
+    const entries = Object.entries(store.weightLog)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-30);
+    return entries.map(([date, kg]) => ({
+      date: new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      weight: weightUnit === "lb" ? Math.round(kg * 2.205 * 10) / 10 : kg,
+    }));
+  }, [store.weightLog, weightUnit]);
 
   // Build week data for display
   const today = new Date();
@@ -105,6 +157,16 @@ function ProgressContent() {
     }
   }
 
+  // Muscle balance chart colors
+  const MUSCLE_COLORS = [
+    "oklch(0.65 0.20 25)",   // Chest — warm red-orange
+    "oklch(0.65 0.18 250)",  // Back — blue
+    "oklch(0.70 0.18 50)",   // Shoulders — amber
+    "oklch(0.65 0.18 320)",  // Arms — magenta
+    "oklch(0.60 0.18 160)",  // Legs — teal
+    "oklch(0.70 0.15 130)",  // Core — green
+  ];
+
   return (
     <div className="flex min-h-screen flex-col gap-4 p-4">
       {/* Header */}
@@ -125,6 +187,58 @@ function ProgressContent() {
           </div>
         </div>
       </div>
+
+      {/* ── Body Weight Trend ── */}
+      {bodyWeightData.length >= 2 && (
+        <div className="rounded-xl bg-card p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Scale className="h-4 w-4 text-primary" />
+              <h2 className="text-base font-bold text-foreground">Body Weight</h2>
+            </div>
+            <span className="text-sm font-bold text-primary">
+              {bodyWeightData[bodyWeightData.length - 1].weight} {weightUnit}
+            </span>
+          </div>
+          <div className="h-36">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={bodyWeightData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={["dataMin - 1", "dataMax + 1"]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "0.5rem",
+                    fontSize: "12px",
+                    color: "var(--foreground)",
+                  }}
+                  formatter={(value: number) => [`${value} ${weightUnit}`, "Weight"]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="weight"
+                  stroke="var(--primary)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "var(--primary)", strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: "var(--primary)", strokeWidth: 2, stroke: "var(--card)" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* ============ GYM SECTION ============ */}
       <div className="flex items-center gap-2">
@@ -196,6 +310,183 @@ function ProgressContent() {
           />
         </div>
       </div>
+
+      {/* ── Volume Trends Chart ── */}
+      {volumeTrend.length > 0 && volumeTrend.some((w) => w.totalVolume > 0) && (
+        <div className="rounded-xl bg-card p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <h2 className="text-base font-bold text-foreground">Volume Trend</h2>
+            </div>
+            <span className="text-[10px] text-muted-foreground">Last 6 weeks</span>
+          </div>
+          <div className="h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={volumeTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+                <XAxis
+                  dataKey="weekLabel"
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => (v === "This week" ? "This wk" : v.replace("Week of ", ""))}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "0.5rem",
+                    fontSize: "12px",
+                    color: "var(--foreground)",
+                  }}
+                  formatter={(value: number) => [`${value.toLocaleString()} vol`, "Volume"]}
+                  labelFormatter={(label) => label}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="totalVolume"
+                  stroke="var(--primary)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "var(--primary)", strokeWidth: 0 }}
+                  activeDot={{ r: 6, fill: "var(--primary)", strokeWidth: 2, stroke: "var(--card)" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>Volume = sets × reps × weight</span>
+            <span className="font-semibold text-foreground">
+              {volumeTrend[volumeTrend.length - 1]?.totalSets ?? 0} sets this week
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Personal Records ── */}
+      {personalRecords.length > 0 && (
+        <div className="rounded-xl bg-card p-3">
+          <div className="mb-3 flex items-center gap-2">
+            <Award className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-bold text-foreground">Personal Records</h2>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {personalRecords.slice(0, 8).map((pr, i) => (
+              <div
+                key={pr.exerciseName}
+                className="flex items-center gap-2.5 rounded-lg bg-surface px-3 py-2"
+              >
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                    i === 0
+                      ? "bg-amber-500/15 text-amber-500"
+                      : i === 1
+                        ? "bg-gray-400/15 text-gray-400"
+                        : i === 2
+                          ? "bg-orange-700/15 text-orange-700"
+                          : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {pr.exerciseName}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {pr.bestWeight} × {pr.bestReps} reps
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-primary">{pr.estimated1RM}</p>
+                  <p className="text-[9px] text-muted-foreground">est. 1RM</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {personalRecords.length > 8 && (
+            <p className="mt-2 text-center text-[10px] text-muted-foreground">
+              +{personalRecords.length - 8} more exercises tracked
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Muscle Group Balance ── */}
+      {muscleBalance.length > 0 && muscleBalance.some((m) => m.setsPerWeek > 0) && (
+        <div className="rounded-xl bg-card p-3">
+          <div className="mb-3 flex items-center gap-2">
+            <Dumbbell className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-bold text-foreground">Muscle Balance</h2>
+            <span className="text-[10px] text-muted-foreground">sets / week</span>
+          </div>
+          <div className="h-40">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={muscleBalance}
+                margin={{ top: 5, right: 5, left: -15, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.3} vertical={false} />
+                <XAxis
+                  dataKey="group"
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "0.5rem",
+                    fontSize: "12px",
+                    color: "var(--foreground)",
+                  }}
+                  formatter={(value: number) => [`${value} sets`, "Sets/week"]}
+                />
+                <ReferenceLine y={10} stroke="var(--primary)" strokeDasharray="4 4" strokeOpacity={0.4} />
+                <Bar dataKey="setsPerWeek" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                  {muscleBalance.map((_, i) => (
+                    <Cell key={i} fill={MUSCLE_COLORS[i % MUSCLE_COLORS.length]} fillOpacity={0.85} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>Dashed line = 10 sets (recommended minimum)</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Imbalance Warnings ── */}
+      {imbalanceWarnings.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {imbalanceWarnings.map((warning, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-2.5 rounded-xl bg-amber-500/10 px-3 py-2.5"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-amber-500">Imbalance detected: </span>
+                {warning}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Past Weeks */}
       <div className="rounded-xl bg-card p-3">

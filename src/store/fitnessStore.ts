@@ -99,6 +99,7 @@ export interface FitnessState {
   meals: Record<string, Meal>;
   mealOrder: string[];
   customExercises: Record<string, StoreLibraryExercise[]>;
+  weightLog: Record<string, number>; // date ISO → body weight in kg
 
   createTemplate: (name: string) => string;
   renameTemplate: (templateId: string, name: string) => void;
@@ -145,6 +146,8 @@ export interface FitnessState {
   logMeal: (date: string, mealId: string, mealType: FoodEntry["mealType"]) => void;
   addCustomExercise: (categoryId: string, exercise: StoreLibraryExercise) => void;
   getAdjustedGoals: (date: string) => Goals;
+  logBodyWeight: (date: string, weightKg: number) => void;
+  deleteWeightLog: (date: string) => void;
 }
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -442,6 +445,7 @@ export const useFitnessStore = create<FitnessState>()(
       meals: {},
       mealOrder: [],
       customExercises: {},
+      weightLog: {},
 
       createTemplate: (name) => {
         const id = uid("tpl");
@@ -881,10 +885,22 @@ export const useFitnessStore = create<FitnessState>()(
         }
         return goals;
       },
+
+      logBodyWeight: (date, weightKg) =>
+        set((state) => ({
+          weightLog: { ...state.weightLog, [date]: weightKg },
+        })),
+
+      deleteWeightLog: (date) =>
+        set((state) => {
+          const { [date]: _gone, ...rest } = state.weightLog;
+          return { weightLog: rest };
+        }),
     }),
     {
       name: "fitness-tracker-storage",
-      version: 7,
+      // Bump version when adding new persisted fields
+      version: 8,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState) return persistedState;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -946,6 +962,12 @@ export const useFitnessStore = create<FitnessState>()(
           return {
             ...persisted,
             customExercises: persisted.customExercises ?? {},
+          };
+        }
+        if (version < 8) {
+          return {
+            ...persisted,
+            weightLog: persisted.weightLog ?? {},
           };
         }
         return persisted;

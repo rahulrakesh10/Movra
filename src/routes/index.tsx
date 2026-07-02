@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Check,
   ChevronDown,
@@ -18,6 +18,7 @@ import {
   Play,
   RotateCcw,
   X,
+  Clock,
 } from "lucide-react";
 import { useFitnessStore, getTodayISO, getDayName, type Exercise } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -88,6 +89,36 @@ function TodayContent() {
     template?.name.toLowerCase().includes("leg") || template?.name.toLowerCase().includes("lower");
   const workoutDoneNoFood = allDone && todayFood.length === 0;
 
+  // ── Workout duration timer ──
+  const hasAnySetDone = useMemo(
+    () => exercises.some((ex) => store.getSetLogs(todayISO, ex).some((s) => s.done)),
+    [exercises, store, todayISO],
+  );
+  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Start timer when first set is checked
+  useEffect(() => {
+    if (hasAnySetDone && !allDone && workoutStartTime === null) {
+      setWorkoutStartTime(Date.now());
+    }
+  }, [hasAnySetDone, allDone, workoutStartTime]);
+
+  // Tick every second while workout is in progress
+  useEffect(() => {
+    if (!workoutStartTime || allDone) return;
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - workoutStartTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [workoutStartTime, allDone]);
+
+  const formatDuration = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div className="flex min-h-screen flex-col gap-4 p-4">
       {/* Header */}
@@ -101,6 +132,19 @@ function TodayContent() {
           <span>{store.streak} day streak</span>
         </div>
       </div>
+
+      {/* Workout Duration */}
+      {workoutStartTime && !isRestDay && (
+        <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">
+            {allDone ? "Workout completed in" : "Workout in progress"}
+          </span>
+          <span className="ml-auto text-sm font-bold tabular-nums text-foreground">
+            {formatDuration(allDone ? elapsedSeconds : elapsedSeconds)}
+          </span>
+        </div>
+      )}
 
       {/* Workout Section */}
       <div className="rounded-xl bg-card p-3">
@@ -626,7 +670,13 @@ function SetRow({
         className="no-spinner w-full rounded-md border border-border bg-card px-1.5 py-2.5 text-center text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
       />
       <button
-        onClick={() => onChange({ done: !set.done })}
+        onClick={() => {
+          onChange({ done: !set.done });
+          // Haptic feedback when checking a set
+          if (!set.done && navigator.vibrate) {
+            navigator.vibrate(50);
+          }
+        }}
         aria-label={set.done ? "Mark set undone" : "Mark set done"}
         className={`flex h-8 w-8 items-center justify-center rounded-md border-2 transition-colors ${
           set.done

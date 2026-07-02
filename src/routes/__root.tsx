@@ -219,6 +219,14 @@ function RootComponent() {
     }
   }, [theme]);
 
+  // Register service worker for offline support
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Silent fail — SW not critical for app function
+    });
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <div

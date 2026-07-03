@@ -1,14 +1,23 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { RotateCcw, Sun, Moon, Monitor, Scale, Download, Upload, Trash2 } from "lucide-react";
-import { useState, useRef, useMemo } from "react";
+import { RotateCcw, Sun, Moon, Monitor, Scale, Download, Upload, Trash2, Ruler, Activity } from "lucide-react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import {
   useFitnessStore,
   getTodayISO,
   type WeightUnit,
   type Goals,
   type ThemePreference,
+  type MeasurementUnit,
+  type BodyMeasurements,
 } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
+import {
+  calculateBMI,
+  calculateBodyFat,
+  calculateWHR,
+  cmToIn,
+  inToCm,
+} from "@/lib/physics";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -25,6 +34,8 @@ function ProfilePage() {
   const navigate = useNavigate();
   const weightUnit = useFitnessStore((s) => s.weightUnit);
   const setWeightUnit = useFitnessStore((s) => s.setWeightUnit);
+  const measurementUnit = useFitnessStore((s) => s.measurementUnit);
+  const setMeasurementUnit = useFitnessStore((s) => s.setMeasurementUnit);
   const theme = useFitnessStore((s) => s.theme);
   const setTheme = useFitnessStore((s) => s.setTheme);
   const profile = useFitnessStore((s) => s.profile);
@@ -39,6 +50,11 @@ function ProfilePage() {
   const units: { value: WeightUnit; label: string }[] = [
     { value: "kg", label: "Kilograms (kg)" },
     { value: "lb", label: "Pounds (lb)" },
+  ];
+
+  const mUnits: { value: MeasurementUnit; label: string }[] = [
+    { value: "cm", label: "Centimeters (cm)" },
+    { value: "in", label: "Inches (in)" },
   ];
 
   const themes: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
@@ -107,8 +123,35 @@ function ProfilePage() {
         </p>
       </section>
 
+      <section>
+        <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Measurement unit
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          {mUnits.map((u) => (
+            <button
+              key={u.value}
+              onClick={() => setMeasurementUnit(u.value)}
+              className={`rounded-xl border p-3 text-left transition-all ${
+                measurementUnit === u.value
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-card hover:border-primary/40"
+              }`}
+            >
+              <p className="text-sm font-semibold text-foreground">{u.label}</p>
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
+          Used for logging body measurements.
+        </p>
+      </section>
+
       {/* ── Body Weight Tracking ── */}
       <BodyWeightSection />
+
+      {/* ── Body Measurements Tracking ── */}
+      <BodyMeasurementsSection />
 
       {profile && (
         <section>
@@ -552,6 +595,318 @@ function GoalsEditor({ goals, onSave }: { goals: Goals; onSave: (g: Partial<Goal
         >
           Save
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ────── Body Measurements Tracking ────── */
+function BodyMeasurementsSection() {
+  const store = useFitnessStore();
+  const measurementsLog = store.measurementsLog;
+  const logMeasurements = store.logMeasurements;
+  const deleteMeasurements = store.deleteMeasurements;
+  const measurementUnit = store.measurementUnit;
+  const weightUnit = store.weightUnit;
+  const profile = store.profile;
+  const weightLog = store.weightLog;
+  const todayISO = getTodayISO();
+
+  const todayMeasurements = measurementsLog[todayISO];
+
+  // Local draft states
+  const [waist, setWaist] = useState("");
+  const [neck, setNeck] = useState("");
+  const [hips, setHips] = useState("");
+  const [chest, setChest] = useState("");
+  const [biceps, setBiceps] = useState("");
+  const [thighs, setThighs] = useState("");
+  const [calves, setCalves] = useState("");
+
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Sync draft states with today's logged data when loaded or unit changes
+  useEffect(() => {
+    if (todayMeasurements) {
+      setWaist(formatVal(todayMeasurements.waist));
+      setNeck(formatVal(todayMeasurements.neck));
+      setHips(formatVal(todayMeasurements.hips));
+      setChest(formatVal(todayMeasurements.chest));
+      setBiceps(formatVal(todayMeasurements.biceps));
+      setThighs(formatVal(todayMeasurements.thighs));
+      setCalves(formatVal(todayMeasurements.calves));
+    } else {
+      setWaist("");
+      setNeck("");
+      setHips("");
+      setChest("");
+      setBiceps("");
+      setThighs("");
+      setCalves("");
+    }
+  }, [todayMeasurements, measurementUnit]);
+
+  // Format a stored cm value for display in the current unit
+  function formatVal(cmValue?: number): string {
+    if (!cmValue || cmValue <= 0) return "";
+    if (measurementUnit === "in") return cmToIn(cmValue).toFixed(1);
+    return cmValue.toFixed(1);
+  }
+
+  // Parse a display string back to cm for saving
+  function parseVal(displayString: string): number | undefined {
+    const val = parseFloat(displayString);
+    if (isNaN(val) || val <= 0) return undefined;
+    if (measurementUnit === "in") return inToCm(val);
+    return val;
+  }
+
+  function handleLog() {
+    const w = parseVal(waist);
+    const n = parseVal(neck);
+    const h = parseVal(hips);
+    const c = parseVal(chest);
+    const b = parseVal(biceps);
+    const t = parseVal(thighs);
+    const cal = parseVal(calves);
+
+    logMeasurements(todayISO, {
+      waist: w,
+      neck: n,
+      hips: h,
+      chest: c,
+      biceps: b,
+      thighs: t,
+      calves: cal,
+    });
+  }
+
+  // Dynamic composition calculations from current input states (converted to cm)
+  const currentHeightCm = profile?.heightCm || 170;
+  const currentSex = profile?.sex || "male";
+
+  const currentWeightKg = useMemo(() => {
+    // Today's logged weight or fallback to profile weight
+    const logged = weightLog[todayISO];
+    if (logged) return logged;
+    return profile?.weightKg || 70;
+  }, [weightLog, todayISO, profile]);
+
+  const liveBMI = useMemo(() => {
+    return calculateBMI(currentWeightKg, currentHeightCm);
+  }, [currentWeightKg, currentHeightCm]);
+
+  const liveBodyFat = useMemo(() => {
+    const w = parseVal(waist);
+    const n = parseVal(neck);
+    const h = parseVal(hips);
+    if (!w || !n) return null;
+    return calculateBodyFat(currentSex, currentHeightCm, w, n, h);
+  }, [waist, neck, hips, currentSex, currentHeightCm, measurementUnit]);
+
+  const liveWHR = useMemo(() => {
+    const w = parseVal(waist);
+    const h = parseVal(hips);
+    if (!w || !h) return null;
+    return calculateWHR(w, h);
+  }, [waist, hips, measurementUnit]);
+
+  const displayBMIStatus = (bmi: number) => {
+    if (bmi < 18.5) return { label: "Underweight", color: "text-amber-500" };
+    if (bmi < 25) return { label: "Normal", color: "text-primary" };
+    if (bmi < 30) return { label: "Overweight", color: "text-amber-500" };
+    return { label: "Obese", color: "text-destructive" };
+  };
+
+  const displayBFStatus = (bf: number, sex: "male" | "female") => {
+    if (sex === "male") {
+      if (bf < 6) return { label: "Essential Fat", color: "text-amber-500" };
+      if (bf < 14) return { label: "Athletic", color: "text-primary" };
+      if (bf < 18) return { label: "Fitness", color: "text-primary" };
+      if (bf < 25) return { label: "Average", color: "text-foreground" };
+      return { label: "High Fat", color: "text-destructive" };
+    } else {
+      if (bf < 14) return { label: "Essential Fat", color: "text-amber-500" };
+      if (bf < 21) return { label: "Athletic", color: "text-primary" };
+      if (bf < 25) return { label: "Fitness", color: "text-primary" };
+      if (bf < 32) return { label: "Average", color: "text-foreground" };
+      return { label: "High Fat", color: "text-destructive" };
+    }
+  };
+
+  const displayWHRStatus = (whr: number, sex: "male" | "female") => {
+    if (sex === "male") {
+      if (whr < 0.9) return { label: "Low Risk", color: "text-primary" };
+      if (whr < 1.0) return { label: "Moderate Risk", color: "text-amber-500" };
+      return { label: "High Risk", color: "text-destructive" };
+    } else {
+      if (whr < 0.8) return { label: "Low Risk", color: "text-primary" };
+      if (whr < 0.85) return { label: "Moderate Risk", color: "text-amber-500" };
+      return { label: "High Risk", color: "text-destructive" };
+    }
+  };
+
+  // Sort logs descending
+  const historyEntries = useMemo(
+    () =>
+      Object.entries(measurementsLog)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, 30),
+    [measurementsLog],
+  );
+
+  return (
+    <section>
+      <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        Body Measurements
+      </h2>
+      <div className="rounded-xl bg-card p-3">
+        {/* Metric Outputs (Live Display) */}
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          <div className="rounded-lg bg-surface p-2 text-center">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+              BMI
+            </p>
+            <p className="text-sm font-bold text-foreground">{liveBMI || "--"}</p>
+            {liveBMI > 0 && (
+              <span className={`text-[8px] font-bold ${displayBMIStatus(liveBMI).color}`}>
+                {displayBMIStatus(liveBMI).label}
+              </span>
+            )}
+          </div>
+          <div className="rounded-lg bg-surface p-2 text-center">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+              Body Fat
+            </p>
+            <p className="text-sm font-bold text-foreground">
+              {liveBodyFat !== null ? `${liveBodyFat}%` : "--"}
+            </p>
+            {liveBodyFat !== null && (
+              <span className={`text-[8px] font-bold ${displayBFStatus(liveBodyFat, currentSex).color}`}>
+                {displayBFStatus(liveBodyFat, currentSex).label}
+              </span>
+            )}
+          </div>
+          <div className="rounded-lg bg-surface p-2 text-center">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+              WHR
+            </p>
+            <p className="text-sm font-bold text-foreground">{liveWHR !== null ? liveWHR : "--"}</p>
+            {liveWHR !== null && (
+              <span className={`text-[8px] font-bold ${displayWHRStatus(liveWHR, currentSex).color}`}>
+                {displayWHRStatus(liveWHR, currentSex).label}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Navy Method Helper Note */}
+        {(!waist || !neck || (currentSex === "female" && !hips)) && (
+          <p className="mb-3 text-[10px] text-muted-foreground italic">
+            * Enter height in Profile, and Waist & Neck here (plus Hips for females) to calculate body fat %.
+          </p>
+        )}
+
+        {/* Entry fields grid */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+          <MeasurementField label="Waist" unit={measurementUnit} value={waist} onChange={setWaist} />
+          <MeasurementField label="Neck" unit={measurementUnit} value={neck} onChange={setNeck} />
+          <MeasurementField
+            label="Hips"
+            unit={measurementUnit}
+            value={hips}
+            onChange={setHips}
+            placeholder={currentSex === "female" ? "Required" : "Optional"}
+          />
+          <MeasurementField label="Chest" unit={measurementUnit} value={chest} onChange={setChest} />
+          <MeasurementField label="Biceps" unit={measurementUnit} value={biceps} onChange={setBiceps} />
+          <MeasurementField label="Thighs" unit={measurementUnit} value={thighs} onChange={setThighs} />
+          <MeasurementField label="Calves" unit={measurementUnit} value={calves} onChange={setCalves} />
+        </div>
+
+        <button
+          onClick={handleLog}
+          disabled={!waist && !neck && !hips && !chest && !biceps && !thighs && !calves}
+          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          <Ruler className="h-3.5 w-3.5" />
+          Log Measurements
+        </button>
+
+        {/* History list */}
+        {historyEntries.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowHistory((o) => !o)}
+              className="mt-3 w-full text-center text-[10px] font-medium text-primary"
+            >
+              {showHistory ? "Hide measurement history" : `Show measurement history (${historyEntries.length})`}
+            </button>
+            {showHistory && (
+              <div className="mt-3 flex flex-col gap-1.5 max-h-56 overflow-y-auto">
+                {historyEntries.map(([date, data]) => (
+                  <div
+                    key={date}
+                    className="flex flex-col gap-1 rounded-md bg-surface p-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between border-b border-border/50 pb-1 font-semibold">
+                      <span className="text-muted-foreground">
+                        {new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <button
+                        onClick={() => deleteMeasurements(date)}
+                        className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                        aria-label="Delete entry"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-y-0.5 text-[10px] text-foreground/80">
+                      {data.waist && <span>Waist: {formatVal(data.waist)}{measurementUnit}</span>}
+                      {data.neck && <span>Neck: {formatVal(data.neck)}{measurementUnit}</span>}
+                      {data.hips && <span>Hips: {formatVal(data.hips)}{measurementUnit}</span>}
+                      {data.chest && <span>Chest: {formatVal(data.chest)}{measurementUnit}</span>}
+                      {data.biceps && <span>Biceps: {formatVal(data.biceps)}{measurementUnit}</span>}
+                      {data.thighs && <span>Thighs: {formatVal(data.thighs)}{measurementUnit}</span>}
+                      {data.calves && <span>Calves: {formatVal(data.calves)}{measurementUnit}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+interface MeasurementFieldProps {
+  label: string;
+  unit: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}
+
+function MeasurementField({ label, unit, value, onChange, placeholder = "0.0" }: MeasurementFieldProps) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-surface px-2 py-1.5">
+      <span className="text-xs font-medium text-foreground">{label}</span>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          inputMode="decimal"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-16 rounded border border-border bg-card px-1 py-0.5 text-right text-xs text-foreground focus:border-primary focus:outline-none"
+        />
+        <span className="text-[10px] text-muted-foreground w-4">{unit}</span>
       </div>
     </div>
   );

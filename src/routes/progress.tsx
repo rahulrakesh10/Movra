@@ -10,6 +10,7 @@ import {
   Award,
   BarChart3,
   Scale,
+  Ruler,
 } from "lucide-react";
 import { useFitnessStore, getTodayISO } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -19,6 +20,11 @@ import {
   computeMuscleGroupBalance,
   detectImbalances,
 } from "@/lib/analytics";
+import {
+  calculateBMI,
+  calculateBodyFat,
+  cmToIn,
+} from "@/lib/physics";
 import {
   ResponsiveContainer,
   LineChart,
@@ -32,7 +38,7 @@ import {
   Cell,
   ReferenceLine,
 } from "recharts";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/progress")({
   head: () => ({
@@ -86,6 +92,69 @@ function ProgressContent() {
       weight: weightUnit === "lb" ? Math.round(kg * 2.205 * 10) / 10 : kg,
     }));
   }, [store.weightLog, weightUnit]);
+
+  // ----- Body measurements data -----
+  const [activeMetric, setActiveMetric] = useState<string>("waist");
+  const measurementsLog = store.measurementsLog;
+  const measurementUnit = store.measurementUnit;
+  const profile = store.profile;
+
+  const bodyMeasurementsData = useMemo(() => {
+    const heightCm = profile?.heightCm || 170;
+    const sex = profile?.sex || "male";
+
+    if (activeMetric === "bmi") {
+      const entries = Object.entries(store.weightLog)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-30);
+      return entries.map(([date, kg]) => ({
+        date: new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        value: calculateBMI(kg, heightCm),
+      }));
+    }
+
+    if (activeMetric === "bodyFat") {
+      const entries = Object.entries(measurementsLog)
+        .filter(([, data]) => data.waist && data.neck)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-30);
+      return entries.map(([date, data]) => {
+        const bf = calculateBodyFat(sex, heightCm, data.waist!, data.neck!, data.hips);
+        return {
+          date: new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          value: bf || 0,
+        };
+      });
+    }
+
+    // Default: waist, neck, hips, chest, biceps, thighs, calves
+    const entries = Object.entries(measurementsLog)
+      .filter(([, data]) => {
+        const key = activeMetric as keyof typeof data;
+        return typeof data[key] === "number" && (data[key] || 0) > 0;
+      })
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-30);
+
+    return entries.map(([date, data]) => {
+      const key = activeMetric as keyof typeof data;
+      const cmValue = data[key] as number;
+      const displayValue = measurementUnit === "in" ? Math.round(cmToIn(cmValue) * 10) / 10 : cmValue;
+      return {
+        date: new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        value: displayValue,
+      };
+    });
+  }, [measurementsLog, store.weightLog, activeMetric, measurementUnit, profile]);
 
   // Build week data for display
   const today = new Date();
@@ -237,6 +306,81 @@ function ProgressContent() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      )}
+
+      {/* ── Body Measurements Trend ── */}
+      {Object.keys(measurementsLog).length >= 1 && (
+        <div className="rounded-xl bg-card p-3">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Ruler className="h-4 w-4 text-primary shrink-0" />
+              <h2 className="text-base font-bold text-foreground truncate">Measurements</h2>
+            </div>
+            
+            <select
+              value={activeMetric}
+              onChange={(e) => setActiveMetric(e.target.value)}
+              className="text-xs bg-surface border border-border rounded-lg px-2.5 py-1.5 text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="waist">Waist</option>
+              <option value="neck">Neck</option>
+              <option value="hips">Hips</option>
+              <option value="chest">Chest</option>
+              <option value="biceps">Biceps</option>
+              <option value="thighs">Thighs</option>
+              <option value="calves">Calves</option>
+              <option value="bodyFat">Body Fat %</option>
+              <option value="bmi">BMI</option>
+            </select>
+          </div>
+          
+          {bodyMeasurementsData.length >= 2 ? (
+            <div className="h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={bodyMeasurementsData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={["dataMin - 1", "dataMax + 1"]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "0.5rem",
+                      fontSize: "12px",
+                      color: "var(--foreground)",
+                    }}
+                    formatter={(value: number) => {
+                      const suffix = activeMetric === "bodyFat" ? "%" : activeMetric === "bmi" ? "" : ` ${measurementUnit}`;
+                      return [`${value}${suffix}`, activeMetric.toUpperCase()];
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: "var(--primary)", strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: "var(--primary)", strokeWidth: 2, stroke: "var(--card)" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              Add at least 2 logs in Profile to see trend lines.
+            </div>
+          )}
         </div>
       )}
 

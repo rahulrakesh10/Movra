@@ -66,6 +66,17 @@ export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "ath
 export type WeightUnit = "kg" | "lb";
 export type LiftingGoal = "strength" | "hypertrophy" | "endurance" | "general";
 export type ThemePreference = "light" | "dark" | "system";
+export type MeasurementUnit = "cm" | "in";
+
+export interface BodyMeasurements {
+  waist?: number;  // stored in cm
+  neck?: number;   // stored in cm
+  hips?: number;   // stored in cm
+  chest?: number;  // stored in cm
+  biceps?: number; // stored in cm
+  thighs?: number; // stored in cm
+  calves?: number; // stored in cm
+}
 
 export interface Profile {
   sex: Sex;
@@ -100,6 +111,8 @@ export interface FitnessState {
   mealOrder: string[];
   customExercises: Record<string, StoreLibraryExercise[]>;
   weightLog: Record<string, number>; // date ISO → body weight in kg
+  measurementUnit: MeasurementUnit;
+  measurementsLog: Record<string, BodyMeasurements>; // date ISO → body measurements in cm
 
   createTemplate: (name: string) => string;
   renameTemplate: (templateId: string, name: string) => void;
@@ -148,6 +161,9 @@ export interface FitnessState {
   getAdjustedGoals: (date: string) => Goals;
   logBodyWeight: (date: string, weightKg: number) => void;
   deleteWeightLog: (date: string) => void;
+  setMeasurementUnit: (unit: MeasurementUnit) => void;
+  logMeasurements: (date: string, measurements: BodyMeasurements) => void;
+  deleteMeasurements: (date: string) => void;
 }
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -446,6 +462,8 @@ export const useFitnessStore = create<FitnessState>()(
       mealOrder: [],
       customExercises: {},
       weightLog: {},
+      measurementUnit: "cm",
+      measurementsLog: {},
 
       createTemplate: (name) => {
         const id = uid("tpl");
@@ -896,11 +914,24 @@ export const useFitnessStore = create<FitnessState>()(
           const { [date]: _gone, ...rest } = state.weightLog;
           return { weightLog: rest };
         }),
+
+      setMeasurementUnit: (unit) => set(() => ({ measurementUnit: unit })),
+
+      logMeasurements: (date, measurements) =>
+        set((state) => ({
+          measurementsLog: { ...state.measurementsLog, [date]: measurements },
+        })),
+
+      deleteMeasurements: (date) =>
+        set((state) => {
+          const { [date]: _gone, ...rest } = state.measurementsLog;
+          return { measurementsLog: rest };
+        }),
     }),
     {
       name: "fitness-tracker-storage",
       // Bump version when adding new persisted fields
-      version: 8,
+      version: 9,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState) return persistedState;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -968,6 +999,13 @@ export const useFitnessStore = create<FitnessState>()(
           return {
             ...persisted,
             weightLog: persisted.weightLog ?? {},
+          };
+        }
+        if (version < 9) {
+          return {
+            ...persisted,
+            measurementUnit: persisted.measurementUnit ?? "cm",
+            measurementsLog: persisted.measurementsLog ?? {},
           };
         }
         return persisted;

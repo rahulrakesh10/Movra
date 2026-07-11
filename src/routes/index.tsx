@@ -20,6 +20,8 @@ import {
   X,
   Clock,
   Brain,
+  Plane,
+  MapPin,
 } from "lucide-react";
 import { useFitnessStore, getTodayISO, getDayName, type Exercise } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -31,6 +33,11 @@ import {
   isCompoundExercise,
 } from "@/lib/progressiveOverload";
 import { generateCoachInsights, computeStrengthHistory } from "@/lib/analytics";
+import {
+  EQUIPMENT_PROFILES,
+  buildSubstitutionOverlay,
+  type EquipmentProfile,
+} from "@/lib/equipmentSubstitutions";
 
 const REST_PRESETS = [30, 60, 90, 120, 180] as const;
 
@@ -98,6 +105,17 @@ function TodayContent() {
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [store.logs, todayISO, store.streak, totalCalories],
+  );
+
+  // Travel Mode
+  const activeTravelMode = store.getActiveTravelMode();
+  const [travelModalOpen, setTravelModalOpen] = useState(false);
+  const substitutionOverlay = useMemo(
+    () =>
+      activeTravelMode && activeTravelMode !== "full"
+        ? buildSubstitutionOverlay(exercises, activeTravelMode)
+        : {},
+    [exercises, activeTravelMode],
   );
 
   const completedCount = todayLog.exercisesCompleted.length;
@@ -199,6 +217,14 @@ function TodayContent() {
             <CoachCard key={i} insight={insight} />
           ))}
         </div>
+      )}
+
+      {/* ─── Travel Mode Chip ─── */}
+      {!isRestDay && (
+        <TravelModeChip
+          activeProfile={activeTravelMode}
+          onOpen={() => setTravelModalOpen(true)}
+        />
       )}
 
       {/* Workout Duration */}
@@ -306,6 +332,7 @@ function TodayContent() {
                       date={todayISO}
                       isDone={todayLog.exercisesCompleted.includes(exercise.id)}
                       templateId={templateId}
+                      substitutedName={substitutionOverlay[exercise.id] ?? null}
                     />
                   </div>
                 </div>
@@ -448,6 +475,8 @@ function TodayContent() {
           </>
         )}
       </div>
+
+      <TravelModeModal open={travelModalOpen} onClose={() => setTravelModalOpen(false)} />
     </div>
   );
 }
@@ -457,15 +486,21 @@ function TodayExerciseCard({
   date,
   isDone,
   templateId,
+  substitutedName,
 }: {
   exercise: Exercise;
   date: string;
   isDone: boolean;
   templateId: string | null;
+  substitutedName: string | null;
 }) {
   const store = useFitnessStore();
   const unit = useFitnessStore((s) => s.weightUnit);
-  const setLogs = store.getSetLogs(date, exercise);
+  // If travel mode has substituted this exercise, log under the substituted name
+  const effectiveExercise: Exercise = substitutedName
+    ? { ...exercise, name: substitutedName }
+    : exercise;
+  const setLogs = store.getSetLogs(date, effectiveExercise);
   const doneCount = setLogs.filter((s) => s.done).length;
   const [open, setOpen] = useState(!isDone);
   const [swapOpen, setSwapOpen] = useState(false);
@@ -524,7 +559,7 @@ function TodayExerciseCard({
   }, [restDuration]);
 
   // ── Progressive overload: fetch last session by exercise name ──
-  const lastSession = getLastSessionByName(store.logs, exercise.name, date);
+  const lastSession = getLastSessionByName(store.logs, effectiveExercise.name, date);
   const hasLastSession = lastSession && lastSession.some((s) => s.weight > 0);
 
   return (
@@ -548,12 +583,22 @@ function TodayExerciseCard({
             {isDone && <Check className="h-3 w-3" />}
           </div>
           <div className="flex-1 min-w-0">
+            {/* Original name (crossed out if substituted) */}
             <p
               className={`text-sm font-semibold truncate ${
                 isDone ? "text-primary line-through opacity-70" : "text-foreground"
               }`}
             >
-              {exercise.name}
+              {substitutedName ? (
+                <>
+                  <span className="line-through text-muted-foreground/50 mr-1">
+                    {exercise.name}
+                  </span>
+                  <span className="text-amber-400">{substitutedName}</span>
+                </>
+              ) : (
+                exercise.name
+              )}
             </p>
             <p className="text-[11px] text-muted-foreground">
               {doneCount}/{exercise.sets} sets · target {exercise.reps}
@@ -666,7 +711,7 @@ function TodayExerciseCard({
                   index={i}
                   set={s}
                   suggestedWeight={suggested}
-                  onChange={(patch) => store.updateSetLog(date, exercise, i, patch)}
+                  onChange={(patch) => store.updateSetLog(date, effectiveExercise, i, patch)}
                 />
               );
             })}
@@ -1156,6 +1201,115 @@ function StrengthSparkline({ exerciseName, unit }: { exerciseName: string; unit:
         <span>{history[0].date.slice(5)}</span>
         <span className="font-semibold text-foreground/60">{lastVal} est. 1RM</span>
         <span>{history[history.length - 1].date.slice(5)}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ────── Travel Mode Components ────── */
+function TravelModeChip({
+  activeProfile,
+  onOpen,
+}: {
+  activeProfile: EquipmentProfile | null;
+  onOpen: () => void;
+}) {
+  if (!activeProfile || activeProfile === "full") {
+    return (
+      <button
+        onClick={onOpen}
+        className="fade-slide-up flex items-center gap-2 rounded-xl border border-border/50 bg-surface/50 px-3 py-2 text-muted-foreground transition-colors hover:bg-surface"
+      >
+        <Plane className="h-4 w-4" />
+        <span className="text-xs font-medium">Traveling today?</span>
+      </button>
+    );
+  }
+
+  const meta = EQUIPMENT_PROFILES.find((p) => p.id === activeProfile);
+  return (
+    <button
+      onClick={onOpen}
+      className="fade-slide-up flex w-full items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-left"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
+        <Plane className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold uppercase tracking-wider text-amber-400">
+          Travel Mode Active
+        </p>
+        <p className="text-sm font-medium text-foreground truncate">
+          {meta?.emoji} {meta?.label}
+        </p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-amber-400/50" />
+    </button>
+  );
+}
+
+function TravelModeModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const store = useFitnessStore();
+  const activeProfile = store.getActiveTravelMode() ?? "full";
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="animate-slide-up relative flex max-h-[85vh] flex-col rounded-t-3xl border-t bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Travel Mode</h2>
+            <p className="text-xs text-muted-foreground">Auto-swaps exercises for today</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-muted-foreground hover:bg-surface/80 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-4">
+          <div className="flex flex-col gap-2">
+            {EQUIPMENT_PROFILES.map((profile) => (
+              <button
+                key={profile.id}
+                onClick={() => {
+                  store.setTravelMode(profile.id);
+                  onClose();
+                }}
+                className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                  activeProfile === profile.id
+                    ? "border-amber-500/50 bg-amber-500/10"
+                    : "border-border bg-surface hover:bg-surface/80"
+                }`}
+              >
+                <div className="text-2xl leading-none">{profile.emoji}</div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-bold ${
+                    activeProfile === profile.id ? "text-amber-400" : "text-foreground"
+                  }`}>
+                    {profile.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{profile.description}</p>
+                </div>
+                {activeProfile === profile.id && (
+                  <Check className="h-5 w-5 text-amber-500" />
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="mt-4 text-center text-[10px] text-muted-foreground">
+            Your saved routine is never modified. Travel mode automatically resets tomorrow.
+          </p>
+        </div>
       </div>
     </div>
   );

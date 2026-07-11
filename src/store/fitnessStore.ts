@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { type EquipmentProfile, getSubstitute } from "@/lib/equipmentSubstitutions";
 
 export interface Exercise {
   id: string;
@@ -87,6 +88,7 @@ export interface Profile {
   activity: ActivityLevel;
   daysPerWeek: number;
   liftingGoal: LiftingGoal;
+  equipmentPreference: EquipmentProfile;
 }
 
 export interface StoreLibraryExercise {
@@ -113,6 +115,8 @@ export interface FitnessState {
   weightLog: Record<string, number>; // date ISO → body weight in kg
   measurementUnit: MeasurementUnit;
   measurementsLog: Record<string, BodyMeasurements>; // date ISO → body measurements in cm
+  /** Travel Mode: {date, profile} — auto-resets when date changes */
+  travelMode: { date: string; profile: EquipmentProfile } | null;
 
   createTemplate: (name: string) => string;
   renameTemplate: (templateId: string, name: string) => void;
@@ -164,6 +168,9 @@ export interface FitnessState {
   setMeasurementUnit: (unit: MeasurementUnit) => void;
   logMeasurements: (date: string, measurements: BodyMeasurements) => void;
   deleteMeasurements: (date: string) => void;
+  setTravelMode: (profile: EquipmentProfile | null) => void;
+  /** Returns current travel profile, or null if not active / expired */
+  getActiveTravelMode: () => EquipmentProfile | null;
 }
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -352,6 +359,7 @@ const BASE: Record<string, { name: string; exercises: BaseEx[] }> = {
 export function buildPlanFromProfile(
   daysPerWeek: number,
   liftingGoal: LiftingGoal,
+  equipmentPreference: EquipmentProfile,
 ): {
   templates: Record<string, WorkoutTemplate>;
   templateOrder: string[];
@@ -374,18 +382,22 @@ export function buildPlanFromProfile(
     templates[id] = {
       id,
       name: base.name,
-      exercises: base.exercises.map((e, i) => ({
-        id: `${id}-${i}`,
-        name: e.name,
-        sets: isCardio(kind) ? (e.name === "Plank" ? 3 : 1) : e.big ? scheme.bigSets : scheme.sets,
-        reps: isCardio(kind)
-          ? e.name === "Plank"
-            ? "60s"
-            : "30 min"
-          : e.big
-            ? scheme.bigReps
-            : scheme.reps,
-      })),
+      exercises: base.exercises.map((e, i) => {
+        const sub = getSubstitute(e.name, equipmentPreference);
+        const finalName = sub || e.name;
+        return {
+          id: `${id}-${i}`,
+          name: finalName,
+          sets: isCardio(kind) ? (e.name === "Plank" ? 3 : 1) : e.big ? scheme.bigSets : scheme.sets,
+          reps: isCardio(kind)
+            ? e.name === "Plank"
+              ? "60s"
+              : "30 min"
+            : e.big
+              ? scheme.bigReps
+              : scheme.reps,
+        };
+      }),
     };
     templateOrder.push(id);
   }
@@ -464,6 +476,7 @@ export const useFitnessStore = create<FitnessState>()(
       weightLog: {},
       measurementUnit: "cm",
       measurementsLog: {},
+      travelMode: null,
 
       createTemplate: (name) => {
         const id = uid("tpl");
@@ -787,6 +800,7 @@ export const useFitnessStore = create<FitnessState>()(
           const { templates, templateOrder, weekPlan } = buildPlanFromProfile(
             profile.daysPerWeek,
             profile.liftingGoal,
+            profile.equipmentPreference,
           );
           return {
             profile,
@@ -927,11 +941,29 @@ export const useFitnessStore = create<FitnessState>()(
           const { [date]: _gone, ...rest } = state.measurementsLog;
           return { measurementsLog: rest };
         }),
+
+      setTravelMode: (profile) => {
+        if (profile === null || profile === "full") {
+          set(() => ({ travelMode: null }));
+        } else {
+          const today = new Date().toISOString().split("T")[0];
+          set(() => ({ travelMode: { date: today, profile } }));
+        }
+      },
+
+      getActiveTravelMode: () => {
+        const { travelMode } = get();
+        if (!travelMode) return null;
+        const today = new Date().toISOString().split("T")[0];
+        // Auto-expire if stored date is not today
+        if (travelMode.date !== today) return null;
+        return travelMode.profile;
+      },
     }),
     {
       name: "fitness-tracker-storage",
       // Bump version when adding new persisted fields
-      version: 9,
+      version: 11,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState) return persistedState;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1006,6 +1038,18 @@ export const useFitnessStore = create<FitnessState>()(
             ...persisted,
             measurementUnit: persisted.measurementUnit ?? "cm",
             measurementsLog: persisted.measurementsLog ?? {},
+          };
+        }
+        if (version < 10) {
+          return {
+            ...persisted,
+            travelMode: null,
+          };
+        }
+        if (version < 11) {
+          return {
+            ...persisted,
+            profile: persisted.profile ? { ...persisted.profile, equipmentPreference: "full" } : null,
           };
         }
         return persisted;

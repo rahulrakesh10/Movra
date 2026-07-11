@@ -18,6 +18,7 @@ import {
   cmToIn,
   inToCm,
 } from "@/lib/physics";
+import { EQUIPMENT_PROFILES } from "@/lib/equipmentSubstitutions";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -42,6 +43,7 @@ function ProfilePage() {
   const goals = useFitnessStore((s) => s.goals);
   const setGoals = useFitnessStore((s) => s.setGoals);
   const resetOnboarding = useFitnessStore((s) => s.resetOnboarding);
+  const completeOnboarding = useFitnessStore((s) => s.completeOnboarding);
 
   if (!hydrated) {
     return <div className="flex min-h-screen flex-col p-3" />;
@@ -166,7 +168,26 @@ function ProfilePage() {
             <Row label="Goal" value={profile.goalType} />
             <Row label="Activity" value={profile.activity} />
             <Row label="Days / week" value={String(profile.daysPerWeek)} />
+            <Row
+              label="Equipment"
+              value={
+                EQUIPMENT_PROFILES.find((p) => p.id === profile.equipmentPreference)?.label ||
+                profile.equipmentPreference
+              }
+            />
           </div>
+          <button
+            onClick={() => {
+              if (confirm("This will regenerate your weekly templates based on your profile settings. Any custom exercises added to the base templates will be lost. Continue?")) {
+                completeOnboarding(profile);
+                alert("Base templates regenerated!");
+              }
+            }}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Regenerate base templates
+          </button>
         </section>
       )}
 

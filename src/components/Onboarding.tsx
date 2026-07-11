@@ -9,6 +9,7 @@ import {
   type ActivityLevel,
   type LiftingGoal,
 } from "@/store/fitnessStore";
+import { type EquipmentProfile, EQUIPMENT_PROFILES } from "@/lib/equipmentSubstitutions";
 
 const GOAL_OPTIONS: { value: GoalType; label: string; desc: string }[] = [
   { value: "lose", label: "Lose weight", desc: "Cut fat, stay lean" },
@@ -44,8 +45,9 @@ export function Onboarding() {
   const [activity, setActivity] = useState<ActivityLevel>("moderate");
   const [daysPerWeek, setDaysPerWeek] = useState(4);
   const [liftingGoal, setLiftingGoal] = useState<LiftingGoal>("hypertrophy");
+  const [equipmentPreference, setEquipmentPreference] = useState<EquipmentProfile>("full");
 
-  const totalSteps = 7;
+  const totalSteps = 8;
 
   const profile: Profile = {
     sex,
@@ -56,6 +58,7 @@ export function Onboarding() {
     activity,
     daysPerWeek,
     liftingGoal,
+    equipmentPreference,
   };
 
   const previewGoals = computeGoalsFromProfile(profile);
@@ -162,6 +165,26 @@ export function Onboarding() {
 
         {step === 3 && (
           <div className="flex flex-col gap-4">
+            <StepHeader
+              title="How do you want to train?"
+              subtitle="We'll tune your base routine to this equipment."
+            />
+            <div className="flex flex-col gap-2">
+              {EQUIPMENT_PROFILES.map((opt) => (
+                <OptionCard
+                  key={opt.id}
+                  selected={equipmentPreference === opt.id}
+                  onClick={() => setEquipmentPreference(opt.id)}
+                  label={`${opt.emoji} ${opt.label}`}
+                  desc={opt.description}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="flex flex-col gap-4">
             <StepHeader title="Days per week" subtitle="How often will you train?" />
             <div className="rounded-xl bg-card p-5 text-center">
               <p className="text-5xl font-bold text-foreground">{daysPerWeek}</p>
@@ -185,7 +208,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="flex flex-col gap-4">
             <StepHeader title="About you" subtitle="Used to calculate your calorie goal." />
             <div className="grid grid-cols-2 gap-2">
@@ -273,7 +296,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <div className="flex flex-col gap-4">
             <StepHeader
               title="Activity outside the gym"
@@ -293,7 +316,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 6 && (
+        {step === 7 && (
           <div className="flex flex-col gap-4">
             <StepHeader title="Your daily targets" subtitle="You can tweak these anytime." />
             <div className="rounded-xl bg-card p-5 text-center">

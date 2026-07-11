@@ -457,7 +457,7 @@ export const useFitnessStore = create<FitnessState>()(
       profile: null,
       onboarded: false,
       weightUnit: "kg",
-      theme: "system",
+      theme: "dark",
       meals: {},
       mealOrder: [],
       customExercises: {},
@@ -979,7 +979,7 @@ export const useFitnessStore = create<FitnessState>()(
         if (version < 5) {
           return {
             ...persisted,
-            theme: persisted.theme ?? "system",
+            theme: persisted.theme ?? "dark",
           };
         }
         if (version < 6) {

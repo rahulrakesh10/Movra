@@ -19,6 +19,7 @@ import {
   RotateCcw,
   X,
   Clock,
+  Brain,
 } from "lucide-react";
 import { useFitnessStore, getTodayISO, getDayName, type Exercise } from "@/store/fitnessStore";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -29,6 +30,7 @@ import {
   suggestNextWeight,
   isCompoundExercise,
 } from "@/lib/progressiveOverload";
+import { generateCoachInsights, computeStrengthHistory } from "@/lib/analytics";
 
 const REST_PRESETS = [30, 60, 90, 120, 180] as const;
 
@@ -57,6 +59,14 @@ function TodayPage() {
   return <TodayContent />;
 }
 
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Crushing it tonight";
+}
+
 function TodayContent() {
   const todayISO = getTodayISO();
   const todayDay = getDayName();
@@ -74,6 +84,22 @@ function TodayContent() {
   const totalCarbs = Math.round(todayFood.reduce((s, f) => s + f.carbs, 0));
   const totalFat = Math.round(todayFood.reduce((s, f) => s + f.fat, 0));
 
+  // Coach Card insights
+  const coachInsights = useMemo(
+    () =>
+      generateCoachInsights(
+        store.logs,
+        todayISO,
+        exercises.map((e) => ({ name: e.name, reps: e.reps, sets: e.sets })),
+        store.streak,
+        adjustedGoals.calories,
+        totalCalories,
+        store.weekPlan,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store.logs, todayISO, store.streak, totalCalories],
+  );
+
   const completedCount = todayLog.exercisesCompleted.length;
   const totalExercises = exercises.length;
   const allDone = totalExercises > 0 && completedCount === totalExercises;
@@ -83,6 +109,8 @@ function TodayContent() {
     month: "short",
     day: "numeric",
   });
+
+  const greeting = getGreeting();
 
   // Context banner logic
   const isLegDay =
@@ -119,37 +147,77 @@ function TodayContent() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  // Calorie progress ring
+  const calPct = adjustedGoals.calories > 0
+    ? Math.min(100, (totalCalories / adjustedGoals.calories) * 100)
+    : 0;
+
   return (
     <div className="flex min-h-screen flex-col gap-4 p-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-bold text-foreground">Today</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{todayLabel}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm font-semibold text-primary">
-          <Flame className="h-4 w-4" />
-          <span>{store.streak} day streak</span>
+      {/* ─── Hero Header ─── */}
+      <div
+        className="fade-slide-up relative -mx-4 -mt-4 mb-0 overflow-hidden px-4 pb-5 pt-6"
+        style={{ background: "var(--gradient-hero)" }}
+      >
+        {/* Decorative glow orb */}
+        <div
+          className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle, oklch(0.7 0.19 285) 0%, transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary/70">
+              {greeting} 👋
+            </p>
+            <h1 className="mt-0.5 text-3xl font-extrabold tracking-tight text-foreground">
+              Today
+            </h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">{todayLabel}</p>
+          </div>
+          {/* Animated streak badge */}
+          <div
+            className="streak-badge flex shrink-0 items-center gap-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2"
+          >
+            <Flame className="fire-flicker h-4 w-4 text-amber-400" />
+            <div className="text-right">
+              <p className="text-base font-black leading-none text-amber-400">{store.streak}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-amber-500/70">
+                day streak
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* ─── Coach Card ─── */}
+      {coachInsights.length > 0 && (
+        <div className="fade-slide-up flex flex-col gap-2">
+          {coachInsights.map((insight, i) => (
+            <CoachCard key={i} insight={insight} />
+          ))}
+        </div>
+      )}
+
       {/* Workout Duration */}
       {workoutStartTime && !isRestDay && (
-        <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
-          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="fade-slide-up-delay-1 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+          <Clock className="h-3.5 w-3.5 text-primary/70" />
           <span className="text-xs text-muted-foreground">
             {allDone ? "Workout completed in" : "Workout in progress"}
           </span>
-          <span className="ml-auto text-sm font-bold tabular-nums text-foreground">
-            {formatDuration(allDone ? elapsedSeconds : elapsedSeconds)}
+          <span className="ml-auto text-sm font-black tabular-nums text-primary">
+            {formatDuration(elapsedSeconds)}
           </span>
         </div>
       )}
 
       {/* Workout Section */}
-      <div className="rounded-xl bg-card p-3">
-        <div className="mb-2 flex items-center justify-between">
-          <div>
+      <div className="gradient-border-top fade-slide-up-delay-1 rounded-xl bg-card p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-foreground">
                 {template ? template.name : "Rest Day"}
@@ -167,11 +235,13 @@ function TodayContent() {
               </p>
             )}
           </div>
-          {allDone && (
-            <span className="flex items-center gap-1 text-xs font-bold text-primary">
-              <Trophy className="h-3.5 w-3.5" />
-              Done!
-            </span>
+          {/* Workout progress arc */}
+          {totalExercises > 0 && (
+            <WorkoutProgressRing
+              completed={completedCount}
+              total={totalExercises}
+              allDone={allDone}
+            />
           )}
         </div>
 
@@ -243,17 +313,11 @@ function TodayContent() {
             })}
           </div>
         )}
-
-        {totalExercises > 0 && (
-          <p className="mt-2 text-center text-[10px] text-muted-foreground">
-            {completedCount}/{totalExercises} completed
-          </p>
-        )}
       </div>
 
-      {/* ────── Context Banner ────── */}
+      {/* ────── Context Banners ────── */}
       {!isRestDay && isLegDay && (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2.5">
+        <div className="fade-slide-up-delay-2 flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2.5">
           <Zap className="h-4 w-4 text-amber-500" />
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-amber-500">Leg Day</span> — fuel up with extra carbs
@@ -264,20 +328,20 @@ function TodayContent() {
       {workoutDoneNoFood && (
         <Link
           to="/food"
-          className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2.5 transition-colors hover:bg-primary/15"
+          className="fade-slide-up-delay-2 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2.5 transition-colors hover:bg-primary/15"
         >
           <Utensils className="h-4 w-4 text-primary" />
-          <p className="text-xs font-medium text-primary">
+          <p className="text-xs font-semibold text-primary">
             Workout done! Log your post-workout meal →
           </p>
         </Link>
       )}
 
-      {/* Food / Goals Summary */}
-      <div className="rounded-xl bg-card p-3">
-        <div className="mb-2 flex items-center justify-between">
+      {/* ─── Food / Goals Summary ─── */}
+      <div className="gradient-border-top fade-slide-up-delay-2 rounded-xl bg-card p-4">
+        <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-foreground">Food Today</h2>
+            <h2 className="text-base font-bold text-foreground">Nutrition</h2>
             {isRestDay && (
               <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-400">
                 Rest day
@@ -293,45 +357,92 @@ function TodayContent() {
         {todayFood.length === 0 ? (
           <Link
             to="/food"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add your first meal
+            Log your first meal
           </Link>
         ) : (
           <>
-            <div className="mb-2 flex items-end justify-between">
-              <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {totalCalories}
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">
-                    / {adjustedGoals.calories}
-                  </span>
-                </p>
-                <p className="text-[10px] text-muted-foreground">calories</p>
+            {/* Calorie display + macro rings */}
+            <div className="flex items-center gap-4">
+              {/* Calorie ring */}
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
+                <svg className="-rotate-90" width="80" height="80" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="33" fill="none" stroke="currentColor" strokeWidth="5" className="text-muted/30" />
+                  <circle
+                    cx="40" cy="40" r="33"
+                    fill="none"
+                    stroke="url(#calGrad)"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 33}
+                    strokeDashoffset={2 * Math.PI * 33 * (1 - calPct / 100)}
+                    style={{ transition: "stroke-dashoffset 0.6s cubic-bezier(0.22,1,0.36,1)" }}
+                  />
+                  <defs>
+                    <linearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="oklch(0.7 0.19 285)" />
+                      <stop offset="100%" stopColor="oklch(0.68 0.2 310)" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute text-center">
+                  <p className="text-sm font-black leading-none text-foreground">{totalCalories}</p>
+                  <p className="text-[8px] font-medium text-muted-foreground">kcal</p>
+                </div>
               </div>
-              <div className="text-right text-[10px] text-muted-foreground">
-                {Math.max(0, adjustedGoals.calories - totalCalories)} left
+              {/* Stats */}
+              <div className="flex-1">
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="text-lg font-extrabold text-foreground">{Math.round(calPct)}%</span>
+                  {" "}of daily goal
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  {Math.max(0, adjustedGoals.calories - totalCalories)} kcal remaining
+                </p>
+                <div
+                  className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted/40"
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${calPct}%`,
+                      background: "var(--gradient-brand)",
+                    }}
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <MacroProgress
+
+            {/* Macro Rings */}
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <MacroRing
                 label="Protein"
                 value={totalProtein}
                 goal={adjustedGoals.protein}
-                color="bg-primary"
+                colorStart="oklch(0.7 0.19 285)"
+                colorEnd="oklch(0.68 0.2 310)"
+                glowColor="oklch(0.7 0.19 285 / 0.5)"
+                gradientId="protGrad"
               />
-              <MacroProgress
+              <MacroRing
                 label="Carbs"
                 value={totalCarbs}
                 goal={adjustedGoals.carbs}
-                color="bg-blue-500"
+                colorStart="oklch(0.65 0.18 230)"
+                colorEnd="oklch(0.7 0.15 200)"
+                glowColor="oklch(0.65 0.18 230 / 0.5)"
+                gradientId="carbGrad"
               />
-              <MacroProgress
+              <MacroRing
                 label="Fat"
                 value={totalFat}
                 goal={adjustedGoals.fat}
-                color="bg-amber-500"
+                colorStart="oklch(0.8 0.22 50)"
+                colorEnd="oklch(0.75 0.2 35)"
+                glowColor="oklch(0.8 0.22 50 / 0.5)"
+                gradientId="fatGrad"
               />
             </div>
           </>
@@ -527,6 +638,9 @@ function TodayExerciseCard({
               </div>
             </div>
           )}
+
+          {/* ── Strength Sparkline ── */}
+          <StrengthSparkline exerciseName={exercise.name} unit={unit} />
 
           <div className="mb-1 grid grid-cols-[24px_1fr_1fr_32px] items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             <span>Set</span>
@@ -798,30 +912,251 @@ function RestTimerDisplay({
   );
 }
 
-function MacroProgress({
+/* ─── Workout Progress Ring ─── */
+function WorkoutProgressRing({
+  completed,
+  total,
+  allDone,
+}: {
+  completed: number;
+  total: number;
+  allDone: boolean;
+}) {
+  const pct = total > 0 ? completed / total : 0;
+  const r = 20;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct);
+  return (
+    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
+      {allDone && (
+        <span
+          className="absolute inset-0 rounded-full"
+          style={{
+            animation: "pulse-ring 1.2s cubic-bezier(0,0,0.2,1) infinite",
+            border: "2px solid oklch(0.7 0.19 285 / 0.5)",
+          }}
+        />
+      )}
+      <svg className="-rotate-90" width="56" height="56" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r={r} fill="none" stroke="currentColor" strokeWidth="3.5" className="text-muted/30" />
+        <circle
+          cx="28" cy="28" r={r}
+          fill="none"
+          stroke={allDone ? "url(#wkGradDone)" : "url(#wkGrad)"}
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 0.5s cubic-bezier(0.22,1,0.36,1)" }}
+        />
+        <defs>
+          <linearGradient id="wkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="oklch(0.7 0.19 285)" />
+            <stop offset="100%" stopColor="oklch(0.68 0.2 310)" />
+          </linearGradient>
+          <linearGradient id="wkGradDone" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="oklch(0.7 0.18 160)" />
+            <stop offset="100%" stopColor="oklch(0.68 0.2 200)" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute text-center">
+        {allDone ? (
+          <Trophy className="h-4 w-4 text-primary" />
+        ) : (
+          <>
+            <p className="text-xs font-black leading-none text-foreground">{completed}</p>
+            <p className="text-[8px] text-muted-foreground">/{total}</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Macro Ring ─── */
+function MacroRing({
   label,
   value,
   goal,
-  color,
+  colorStart,
+  colorEnd,
+  glowColor,
+  gradientId,
 }: {
   label: string;
   value: number;
   goal: number;
-  color: string;
+  colorStart: string;
+  colorEnd: string;
+  glowColor: string;
+  gradientId: string;
 }) {
   const pct = goal > 0 ? Math.min(100, (value / goal) * 100) : 0;
+  const r = 22;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct / 100);
+  const isOver = value > goal && goal > 0;
   return (
-    <div className="rounded-lg bg-surface p-1.5 text-center">
-      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+    <div className="flex flex-col items-center gap-1 rounded-xl bg-surface p-2">
+      <div className="relative flex h-14 w-14 items-center justify-center">
+        <svg className="-rotate-90" width="56" height="56" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r={r} fill="none" stroke="currentColor" strokeWidth="3.5" className="text-muted/30" />
+          <circle
+            cx="28" cy="28" r={r}
+            fill="none"
+            stroke={`url(#${gradientId})`}
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            style={{
+              transition: "stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1)",
+              filter: pct > 10 ? `drop-shadow(0 0 4px ${glowColor})` : undefined,
+            }}
+          />
+          <defs>
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor={colorStart} />
+              <stop offset="100%" stopColor={colorEnd} />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div className="absolute text-center">
+          <p className="text-[11px] font-black leading-none text-foreground">{value}</p>
+          <p className="text-[8px] text-muted-foreground">g</p>
+        </div>
       </div>
-      <p className="mt-1 text-sm font-bold text-foreground">
-        {value}
-        <span className="text-[10px] font-normal text-muted-foreground">/{goal}g</span>
-      </p>
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
+      <div className="text-center">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className={`text-[9px] font-medium ${isOver ? "text-amber-400" : "text-muted-foreground/70"}`}>
+          {goal > 0 ? `${Math.round(pct)}%` : "—"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ────── Coach Card ────── */
+function CoachCard({ insight }: { insight: import("@/lib/analytics").CoachInsight }) {
+  const accentMap = {
+    overload: "border-primary/30 bg-primary/8",
+    imbalance: "border-amber-500/30 bg-amber-500/8",
+    streak: "border-amber-500/30 bg-amber-500/8",
+    nutrition: "border-emerald-500/30 bg-emerald-500/8",
+    rest: "border-blue-500/30 bg-blue-500/8",
+    pr: "border-amber-500/30 bg-amber-500/8",
+  };
+  const textMap = {
+    overload: "text-primary",
+    imbalance: "text-amber-400",
+    streak: "text-amber-400",
+    nutrition: "text-emerald-400",
+    rest: "text-blue-400",
+    pr: "text-amber-400",
+  };
+  return (
+    <div
+      className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${
+        accentMap[insight.type]
+      }`}
+    >
+      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-background/20">
+        <Brain className={`h-4 w-4 ${textMap[insight.type]}`} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-base leading-none">{insight.emoji}</span>
+          <p className={`text-sm font-bold ${textMap[insight.type]}`}>{insight.title}</p>
+          <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">
+            Movra Coach
+          </span>
+        </div>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{insight.body}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ────── Strength Sparkline ────── */
+function StrengthSparkline({ exerciseName, unit }: { exerciseName: string; unit: string }) {
+  const store = useFitnessStore();
+  const history = useMemo(
+    () => computeStrengthHistory(store.logs, exerciseName, 8),
+    [store.logs, exerciseName],
+  );
+
+  if (history.length < 2) return null;
+
+  const values = history.map((p) => p.estimated1RM);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  const W = 200;
+  const H = 36;
+  const pad = 4;
+  const stepX = (W - pad * 2) / (values.length - 1);
+
+  const points = values.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = H - pad - ((v - min) / range) * (H - pad * 2);
+    return `${x},${y}`;
+  });
+
+  const lastVal = values[values.length - 1];
+  const firstVal = values[0];
+  const pctChange = Math.round(((lastVal - firstVal) / firstVal) * 100);
+  const isUp = pctChange >= 0;
+
+  return (
+    <div className="mb-2 rounded-md bg-primary/5 px-2 py-1.5">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-primary/70">
+          Strength trend · est. 1RM
+        </span>
+        <span className={`text-[11px] font-black ${
+          isUp ? "text-emerald-400" : "text-red-400"
+        }`}>
+          {isUp ? "↑" : "↓"} {Math.abs(pctChange)}%
+        </span>
+      </div>
+      <div className="relative overflow-hidden rounded">
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-9">
+          {/* Fill */}
+          <defs>
+            <linearGradient id={`spark-grad-${exerciseName.replace(/\s/g, "-")}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="oklch(0.7 0.19 285)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="oklch(0.7 0.19 285)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polygon
+            points={`${points.join(" ")} ${pad + (values.length - 1) * stepX},${H} ${pad},${H}`}
+            fill={`url(#spark-grad-${exerciseName.replace(/\s/g, "-")})`}
+          />
+          {/* Line */}
+          <polyline
+            points={points.join(" ")}
+            fill="none"
+            stroke="oklch(0.7 0.19 285)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Last point dot */}
+          <circle
+            cx={points[points.length - 1].split(",")[0]}
+            cy={points[points.length - 1].split(",")[1]}
+            r="2.5"
+            fill="oklch(0.7 0.19 285)"
+          />
+        </svg>
+      </div>
+      <div className="mt-0.5 flex items-center justify-between text-[9px] text-muted-foreground">
+        <span>{history[0].date.slice(5)}</span>
+        <span className="font-semibold text-foreground/60">{lastVal} est. 1RM</span>
+        <span>{history[history.length - 1].date.slice(5)}</span>
+      </div>
     </div>
   );
 }

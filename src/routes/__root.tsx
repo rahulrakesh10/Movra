@@ -149,20 +149,34 @@ function NavTab({ item }: { item: NavItemDef }) {
   const matchRoute = useMatchRoute();
   const isActive = !!matchRoute({ to: item.to, fuzzy: item.to !== "/" });
   return (
-    <Link to={item.to} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2">
+    <Link
+      to={item.to}
+      className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2"
+    >
+      {/* Active glow pill behind icon */}
+      {isActive && (
+        <span
+          className="absolute top-1.5 left-1/2 -translate-x-1/2 h-9 w-12 rounded-xl bg-primary/15 blur-[2px]"
+          style={{
+            animation: "nav-indicator-slide 0.2s cubic-bezier(0.22,1,0.36,1) both",
+          }}
+        />
+      )}
       <div
-        className={`flex items-center justify-center rounded-full px-3 py-1 transition-all duration-100 ${
-          isActive ? "bg-primary/10" : ""
+        className={`relative flex items-center justify-center rounded-xl px-3 py-1.5 transition-all duration-200 ${
+          isActive ? "scale-110" : "scale-100"
         }`}
       >
         <item.icon
-          className={`h-5 w-5 transition-colors duration-100 ${
-            isActive ? "text-primary" : "text-muted-foreground"
+          className={`h-5 w-5 transition-all duration-200 ${
+            isActive
+              ? "text-primary drop-shadow-[0_0_6px_oklch(0.7_0.19_285/0.8)]"
+              : "text-muted-foreground"
           }`}
         />
       </div>
       <span
-        className={`text-[10px] font-semibold leading-none tracking-wide transition-colors duration-100 ${
+        className={`text-[10px] font-bold leading-none tracking-wide transition-all duration-200 ${
           isActive ? "text-primary" : "text-muted-foreground"
         }`}
       >
@@ -183,13 +197,21 @@ function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md"
+      className="fixed bottom-0 left-0 right-0 z-50"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="flex w-full items-stretch px-1 py-1">
-        {navItems.map((item) => (
-          <NavTab key={item.to} item={item} />
-        ))}
+      {/* Glassmorphism bar */}
+      <div
+        className="border-t border-primary/10 bg-card/80 backdrop-blur-xl"
+        style={{
+          boxShadow: "0 -8px 32px -4px rgba(0,0,0,0.3), 0 -1px 0 oklch(0.7 0.19 285 / 0.08)",
+        }}
+      >
+        <div className="flex w-full items-stretch px-1 py-1">
+          {navItems.map((item) => (
+            <NavTab key={item.to} item={item} />
+          ))}
+        </div>
       </div>
     </nav>
   );

@@ -19,6 +19,7 @@ import {
   computePersonalRecords,
   computeMuscleGroupBalance,
   detectImbalances,
+  computeWeeklyReportCard,
 } from "@/lib/analytics";
 import {
   calculateBMI,
@@ -77,6 +78,10 @@ function ProgressContent() {
   const personalRecords = useMemo(() => computePersonalRecords(store.logs), [store.logs]);
   const muscleBalance = useMemo(() => computeMuscleGroupBalance(store.logs, 1), [store.logs]);
   const imbalanceWarnings = useMemo(() => detectImbalances(muscleBalance), [muscleBalance]);
+  const reportCard = useMemo(
+    () => computeWeeklyReportCard(store.logs, store.weekPlan, store.getTemplateForDay.bind(store)),
+    [store.logs, store.weekPlan],
+  );
 
   // ----- Body weight data -----
   const weightUnit = store.weightUnit;
@@ -238,24 +243,47 @@ function ProgressContent() {
 
   return (
     <div className="flex min-h-screen flex-col gap-4 p-4">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Progress</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your fitness journey</p>
-      </div>
+      {/* ─── Hero Header ─── */}
+      <div
+        className="fade-slide-up relative -mx-4 -mt-4 mb-0 overflow-hidden px-4 pb-5 pt-6"
+        style={{ background: "var(--gradient-hero)" }}
+      >
+        <div
+          className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle, oklch(0.7 0.18 160) 0%, transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+        <div className="mb-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary/70">Overview</p>
+          <h1 className="mt-0.5 text-3xl font-extrabold tracking-tight text-foreground">Progress</h1>
+        </div>
 
-      {/* Streak Card */}
-      <div className="rounded-xl bg-card p-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <Flame className="h-5 w-5 text-primary" />
+        {/* Hero stats row */}
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-center">
+            <Flame className="mx-auto mb-1 h-4 w-4 text-amber-400" style={{ filter: "drop-shadow(0 0 4px oklch(0.8 0.22 50 / 0.7))" }} />
+            <p className="text-xl font-black leading-none text-amber-400">{streak}</p>
+            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-500/70">Day streak</p>
           </div>
-          <div>
-            <p className="text-2xl font-bold text-foreground">{streak}</p>
-            <p className="text-xs text-muted-foreground">Day streak</p>
+          <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3 text-center">
+            <Trophy className="mx-auto mb-1 h-4 w-4 text-primary" style={{ filter: "drop-shadow(0 0 4px oklch(0.7 0.19 285 / 0.7))" }} />
+            <p className="text-xl font-black leading-none text-primary">{weekProgress.completed}</p>
+            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-primary/70">This week</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-surface/80 p-3 text-center">
+            <TrendingUp className="mx-auto mb-1 h-4 w-4 text-primary/70" />
+            <p className="text-xl font-black leading-none text-foreground">{personalRecords.length}</p>
+            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">PRs tracked</p>
           </div>
         </div>
       </div>
+
+      {/* ─── Weekly Report Card ─── */}
+      {reportCard.workoutsPlanned > 0 && (
+        <WeeklyReportCardDisplay card={reportCard} />
+      )}
 
       {/* ── Body Weight Trend ── */}
       {bodyWeightData.length >= 2 && (
@@ -445,11 +473,13 @@ function ProgressContent() {
             {weekProgress.completed}/{weekProgress.total} days
           </span>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-2 overflow-hidden rounded-full bg-muted/40">
           <div
-            className="h-full rounded-full bg-primary transition-all duration-200"
+            className="h-full rounded-full transition-all duration-700"
             style={{
               width: `${weekProgress.total > 0 ? (weekProgress.completed / weekProgress.total) * 100 : 0}%`,
+              background: "var(--gradient-brand)",
+              boxShadow: "0 0 8px oklch(0.7 0.19 285 / 0.4)",
             }}
           />
         </div>
@@ -515,29 +545,38 @@ function ProgressContent() {
 
       {/* ── Personal Records ── */}
       {personalRecords.length > 0 && (
-        <div className="rounded-xl bg-card p-3">
+        <div className="gradient-border-top rounded-xl bg-card p-3">
           <div className="mb-3 flex items-center gap-2">
-            <Award className="h-4 w-4 text-primary" />
+            <Award className="h-4 w-4 text-primary" style={{ filter: "drop-shadow(0 0 4px oklch(0.7 0.19 285 / 0.7))" }} />
             <h2 className="text-base font-bold text-foreground">Personal Records</h2>
           </div>
           <div className="flex flex-col gap-1.5">
             {personalRecords.slice(0, 8).map((pr, i) => (
               <div
                 key={pr.exerciseName}
-                className="flex items-center gap-2.5 rounded-lg bg-surface px-3 py-2"
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-colors ${
+                  i === 0
+                    ? "border border-amber-500/20 bg-amber-500/8"
+                    : i === 1
+                      ? "border border-gray-400/20 bg-gray-400/5"
+                      : i === 2
+                        ? "border border-orange-700/20 bg-orange-700/5"
+                        : "bg-surface"
+                }`}
               >
                 <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${
                     i === 0
-                      ? "bg-amber-500/15 text-amber-500"
+                      ? "bg-amber-500/20 text-amber-400"
                       : i === 1
-                        ? "bg-gray-400/15 text-gray-400"
+                        ? "bg-gray-400/20 text-gray-400"
                         : i === 2
-                          ? "bg-orange-700/15 text-orange-700"
+                          ? "bg-orange-700/20 text-orange-600"
                           : "bg-muted text-muted-foreground"
                   }`}
+                  style={i === 0 ? { filter: "drop-shadow(0 0 4px oklch(0.8 0.22 50 / 0.5))" } : undefined}
                 >
-                  {i + 1}
+                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
@@ -548,7 +587,9 @@ function ProgressContent() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-primary">{pr.estimated1RM}</p>
+                  <p className={`text-sm font-black ${
+                    i === 0 ? "text-amber-400" : "text-primary"
+                  }`}>{pr.estimated1RM}</p>
                   <p className="text-[9px] text-muted-foreground">est. 1RM</p>
                 </div>
               </div>
@@ -774,6 +815,97 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
       <div>
         <p className="text-lg font-bold text-foreground">{value}</p>
         <p className="text-[10px] text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function WeeklyReportCardDisplay({ card }: { card: import("@/lib/analytics").WeeklyReportCard }) {
+  const gradeColor = {
+    A: "text-emerald-400",
+    B: "text-primary",
+    C: "text-amber-400",
+    D: "text-orange-400",
+    F: "text-red-400",
+  }[card.completionGrade];
+
+  const gradeBg = {
+    A: "border-emerald-500/30 bg-emerald-500/10",
+    B: "border-primary/30 bg-primary/10",
+    C: "border-amber-500/30 bg-amber-500/10",
+    D: "border-orange-400/30 bg-orange-400/10",
+    F: "border-red-400/30 bg-red-400/10",
+  }[card.completionGrade];
+
+  return (
+    <div className="gradient-border-top rounded-xl bg-card p-4">
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Week of {card.weekLabel}
+          </p>
+          <h2 className="mt-0.5 text-base font-bold text-foreground">Weekly Report Card</h2>
+        </div>
+        {/* Grade badge */}
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl font-black ${gradeBg} ${gradeColor}`}>
+          {card.completionGrade}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        <div className="rounded-xl bg-surface p-2 text-center">
+          <p className="text-lg font-black text-foreground">
+            {card.workoutsCompleted}/{card.workoutsPlanned}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+            Sessions
+          </p>
+        </div>
+        <div className="rounded-xl bg-surface p-2 text-center">
+          <p className={`text-lg font-black ${
+            card.volumeChange === null ? "text-muted-foreground"
+            : card.volumeChange >= 0 ? "text-emerald-400"
+            : "text-red-400"
+          }`}>
+            {card.volumeChange === null ? "—" : `${card.volumeChange > 0 ? "+" : ""}${card.volumeChange}%`}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+            Volume
+          </p>
+        </div>
+        <div className="rounded-xl bg-surface p-2 text-center">
+          <p className="text-lg font-black text-foreground">{card.muscleGroupsHit}/6</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+            Muscle groups
+          </p>
+        </div>
+      </div>
+
+      {/* New PRs */}
+      {card.newPRs.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {card.newPRs.slice(0, 3).map((pr) => (
+            <span
+              key={pr}
+              className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-400"
+            >
+              🥇 PR: {pr}
+            </span>
+          ))}
+          {card.newPRs.length > 3 && (
+            <span className="rounded-full bg-surface px-2.5 py-1 text-[10px] text-muted-foreground">
+              +{card.newPRs.length - 3} more
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Top insight */}
+      <div className="flex items-start gap-2 rounded-xl bg-primary/5 px-3 py-2.5">
+        <span className="text-sm">💡</span>
+        <p className="text-[12px] leading-relaxed text-muted-foreground">{card.topInsight}</p>
       </div>
     </div>
   );

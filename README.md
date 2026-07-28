@@ -9,6 +9,7 @@
 ### 1. Workout Routing & Custom Templates
 
 - **Weekly Planner:** Assign workout templates to days of the week (e.g., Monday = Push, Wednesday = Pull, Friday = Legs).
+- **Equipment Profiles:** Generate your entire base routine tuned to your preferred training style (Full Gym, Dumbbells Only, Calisthenics, or Bodyweight).
 - **Flexible Custom Templates:** Rename, delete, and reorganize templates as your training split changes.
 - **Sets, Reps, and Weight Configurator:** Edit target sets and reps inline. View and update weight recommendations per set.
 - **Supersets:** Pair exercises together dynamically to optimize training density.

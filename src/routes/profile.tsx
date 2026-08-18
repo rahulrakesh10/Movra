@@ -67,9 +67,21 @@ function ProfilePage() {
 
   return (
     <div className="flex min-h-screen flex-col gap-4 p-4">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Settings & preferences</p>
+      {/* ─── Hero Header ─── */}
+      <div
+        className="fade-slide-up relative -mx-4 -mt-4 mb-0 overflow-hidden px-4 pb-5 pt-6"
+        style={{ background: "var(--gradient-hero)" }}
+      >
+        <div
+          className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle, oklch(0.65 0.18 250) 0%, transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary/70">Account</p>
+        <h1 className="mt-0.5 text-3xl font-extrabold tracking-tight text-foreground">Profile</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">Settings & preferences</p>
       </div>
 
       <section>
@@ -788,7 +800,7 @@ function BodyMeasurementsSection() {
             <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
               BMI
             </p>
-            <p className="text-sm font-bold text-foreground">{liveBMI || "--"}</p>
+            <p className="stat-num text-sm font-bold text-foreground">{liveBMI || "--"}</p>
             {liveBMI > 0 && (
               <span className={`text-[8px] font-bold ${displayBMIStatus(liveBMI).color}`}>
                 {displayBMIStatus(liveBMI).label}

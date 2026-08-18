@@ -201,7 +201,7 @@ function TodayContent() {
           >
             <Flame className="fire-flicker h-4 w-4 text-amber-400" />
             <div className="text-right">
-              <p className="text-base font-black leading-none text-amber-400">{store.streak}</p>
+              <p className="stat-num text-base font-black leading-none text-amber-400">{store.streak}</p>
               <p className="text-[9px] font-semibold uppercase tracking-wider text-amber-500/70">
                 day streak
               </p>

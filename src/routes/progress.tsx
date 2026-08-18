@@ -264,17 +264,17 @@ function ProgressContent() {
         <div className="mt-4 grid grid-cols-3 gap-3">
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-center">
             <Flame className="mx-auto mb-1 h-4 w-4 text-amber-400" style={{ filter: "drop-shadow(0 0 4px oklch(0.8 0.22 50 / 0.7))" }} />
-            <p className="text-xl font-black leading-none text-amber-400">{streak}</p>
+            <p className="stat-num text-xl font-black leading-none text-amber-400">{streak}</p>
             <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-500/70">Day streak</p>
           </div>
           <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3 text-center">
             <Trophy className="mx-auto mb-1 h-4 w-4 text-primary" style={{ filter: "drop-shadow(0 0 4px oklch(0.7 0.19 285 / 0.7))" }} />
-            <p className="text-xl font-black leading-none text-primary">{weekProgress.completed}</p>
+            <p className="stat-num text-xl font-black leading-none text-primary">{weekProgress.completed}</p>
             <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-primary/70">This week</p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-surface/80 p-3 text-center">
             <TrendingUp className="mx-auto mb-1 h-4 w-4 text-primary/70" />
-            <p className="text-xl font-black leading-none text-foreground">{personalRecords.length}</p>
+            <p className="stat-num text-xl font-black leading-none text-foreground">{personalRecords.length}</p>
             <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">PRs tracked</p>
           </div>
         </div>

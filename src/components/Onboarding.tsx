@@ -93,16 +93,31 @@ export function Onboarding() {
         )}
 
         {step === 0 && (
-          <div className="flex flex-1 flex-col items-center justify-center text-center py-4">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-              <Dumbbell className="h-7 w-7 text-primary" />
+          <div className="relative flex flex-1 flex-col items-center justify-center text-center py-4">
+            <div
+              className="pointer-events-none absolute top-1/2 left-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30"
+              style={{
+                background: "radial-gradient(circle, oklch(0.7 0.19 285) 0%, transparent 70%)",
+                filter: "blur(40px)",
+              }}
+            />
+            <div
+              className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-3xl"
+              style={{
+                background: "var(--gradient-brand)",
+                boxShadow: "0 8px 32px -6px oklch(0.7 0.19 285 / 0.5)",
+              }}
+            >
+              <Dumbbell className="h-9 w-9 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Welcome to Movra</h1>
-            <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+            <h1 className="relative text-3xl font-extrabold tracking-tight text-foreground">
+              Welcome to Movra
+            </h1>
+            <p className="relative mt-2 max-w-xs text-sm text-muted-foreground">
               Let's set up your plan. Takes 60 seconds.
             </p>
 
-            <div className="mt-8 w-full max-w-xs">
+            <div className="relative mt-8 w-full max-w-xs">
               <p className="mb-3 text-sm font-medium text-foreground">Which unit do you prefer?</p>
               <div className="grid grid-cols-2 gap-2">
                 <ToggleCard
@@ -167,7 +182,7 @@ export function Onboarding() {
           <div className="flex flex-col gap-4">
             <StepHeader title="Days per week" subtitle="How often will you train?" />
             <div className="rounded-xl bg-card p-5 text-center">
-              <p className="text-5xl font-bold text-foreground">{daysPerWeek}</p>
+              <p className="stat-num text-5xl font-bold text-foreground">{daysPerWeek}</p>
               <p className="mt-1 text-sm text-muted-foreground">days / week</p>
             </div>
             <input
@@ -300,7 +315,7 @@ export function Onboarding() {
           <div className="flex flex-col gap-4">
             <StepHeader title="Your daily targets" subtitle="You can tweak these anytime." />
             <div className="rounded-xl bg-card p-5 text-center">
-              <p className="text-4xl font-bold text-foreground">{previewGoals.calories}</p>
+              <p className="stat-num text-4xl font-bold text-foreground">{previewGoals.calories}</p>
               <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
                 calories / day
               </p>
@@ -439,7 +454,7 @@ function NumberField({
 function MacroCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="rounded-xl bg-card p-3 text-center">
-      <p className={`text-2xl font-bold ${color}`}>{value}g</p>
+      <p className={`stat-num text-2xl font-bold ${color}`}>{value}g</p>
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </p>

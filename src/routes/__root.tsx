@@ -252,7 +252,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <div
-        className="mx-auto min-h-screen max-w-lg bg-background"
+        className="mx-auto min-h-screen max-w-lg"
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingBottom: showNav ? "calc(4.5rem + env(safe-area-inset-bottom))" : undefined,

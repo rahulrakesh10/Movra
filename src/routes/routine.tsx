@@ -36,10 +36,23 @@ function RoutinePage() {
 
   return (
     <div className="flex min-h-screen flex-col gap-5 p-4">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Weekly Routine</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      {/* ─── Hero Header ─── */}
+      <div
+        className="fade-slide-up relative -mx-4 -mt-4 mb-0 overflow-hidden px-4 pb-5 pt-6"
+        style={{ background: "var(--gradient-hero)" }}
+      >
+        <div
+          className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle, oklch(0.7 0.19 285) 0%, transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary/70">Plan</p>
+        <h1 className="mt-0.5 text-3xl font-extrabold tracking-tight text-foreground">
+          Weekly Routine
+        </h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
           Build workout templates, then assign one to each day.
         </p>
       </div>
@@ -134,7 +147,7 @@ function TemplatesSection() {
 
       <div className="flex flex-col gap-1.5">
         {templates.length === 0 && (
-          <p className="rounded-xl border border-dashed border-border py-4 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-border bg-card/60 py-4 text-center text-sm text-muted-foreground">
             No templates yet. Create one above.
           </p>
         )}

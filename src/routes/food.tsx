@@ -107,18 +107,31 @@ function FoodContent() {
 
   return (
     <div className="flex min-h-screen flex-col gap-4 p-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Food Log</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "short",
-              day: "numeric",
-            })}
-          </p>
-        </div>
+      {/* ─── Hero Header ─── */}
+      <div
+        className="fade-slide-up relative -mx-4 -mt-4 mb-0 overflow-hidden px-4 pb-5 pt-6"
+        style={{ background: "var(--gradient-hero)" }}
+      >
+        <div
+          className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle, oklch(0.75 0.2 50) 0%, transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary/70">
+          Nutrition
+        </p>
+        <h1 className="mt-0.5 text-3xl font-extrabold tracking-tight text-foreground">
+          Food Log
+        </h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+          })}
+        </p>
       </div>
 
       {/* Goals Summary */}
@@ -128,7 +141,7 @@ function FoodContent() {
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               Calories
             </p>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="stat-num text-2xl font-bold text-foreground">
               {totalCalories}
               <span className="ml-1 text-xs font-normal text-muted-foreground">
                 / {goals.calories}
@@ -280,8 +293,11 @@ function FoodContent() {
         })}
 
         {todayLog.food.length === 0 && !showAdd && (
-          <div className="rounded-xl border border-dashed border-border py-6 text-center">
-            <p className="text-xs text-muted-foreground">No food logged today</p>
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card/60 py-8 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <Utensils className="h-4 w-4 text-primary/70" />
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">No food logged today</p>
             <p className="text-[10px] text-muted-foreground/60">Tap "Log Food" to get started</p>
           </div>
         )}

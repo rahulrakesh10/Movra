@@ -93,9 +93,9 @@ export function Onboarding() {
         )}
 
         {step === 0 && (
-          <div className="relative flex flex-1 flex-col items-center justify-center text-center py-4">
+          <div className="relative flex flex-col items-center pt-10 text-center">
             <div
-              className="pointer-events-none absolute top-1/2 left-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30"
+              className="pointer-events-none absolute -top-6 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full opacity-30"
               style={{
                 background: "radial-gradient(circle, oklch(0.7 0.19 285) 0%, transparent 70%)",
                 filter: "blur(40px)",
@@ -135,6 +135,14 @@ export function Onboarding() {
                 You can change this anytime in Profile.
               </p>
             </div>
+
+            <button
+              onClick={next}
+              className="relative mt-8 flex w-full max-w-xs items-center justify-center gap-1 rounded-xl bg-primary py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Get started
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         )}
 
@@ -338,19 +346,21 @@ export function Onboarding() {
         )}
       </div>
 
-      {/* Fixed bottom CTA Button */}
-      <div
-        className="px-5 pt-2 flex-shrink-0 bg-background border-t border-border/5"
-        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
-      >
-        <button
-          onClick={step === totalSteps - 1 ? finish : next}
-          className="flex w-full items-center justify-center gap-1 rounded-xl bg-primary py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+      {/* Fixed bottom CTA Button (steps 1+ — step 0 has its own inline CTA) */}
+      {step > 0 && (
+        <div
+          className="px-5 pt-2 flex-shrink-0 bg-background border-t border-border/5"
+          style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
         >
-          {step === 0 ? "Get started" : step === totalSteps - 1 ? "Start tracking" : "Continue"}
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
+          <button
+            onClick={step === totalSteps - 1 ? finish : next}
+            className="flex w-full items-center justify-center gap-1 rounded-xl bg-primary py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {step === totalSteps - 1 ? "Start tracking" : "Continue"}
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
